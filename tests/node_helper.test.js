@@ -324,3 +324,65 @@ test("logs a problem when it starts or changes, and when the scan works again", 
 		"info: The network scan works again"
 	]);
 });
+
+test("does not scan with an option that is not valid", async () => {
+	const invalid = [
+		// devices must be a list of devices with either a MAC address, as six
+		// pairs of hex digits separated by colons, or an IP address or host name
+		[{ devices: { macAddress: "aa:bb:cc:dd:ee:01" } }, "devices"],
+		[{ devices: [] }, "devices"],
+		[{ devices: [null] }, "devices"],
+		[{ devices: [{ name: "Anna" }] }, "devices"],
+		[{ devices: [{ macAddress: "aa:bb:cc:dd:ee:01", ipAddress: "192.168.178.21" }] }, "devices"],
+		[{ devices: [{ macAddress: "aa:bb:cc:dd:ee" }] }, "devices"],
+		[{ devices: [{ macAddress: "aa-bb-cc-dd-ee-01" }] }, "devices"],
+		[{ devices: [{ ipAddress: "nas fritz box" }] }, "devices"],
+		[{ devices: [{ ipAddress: "" }] }, "devices"],
+		// Nothing that ping or arp-scan would take as an option
+		[{ devices: [{ ipAddress: "-c" }] }, "devices"],
+		[{ network: "-l" }, "network"],
+		// An IPv4 address or network in CIDR notation
+		[{ network: "192.168.178.0/24 --interface=eth0" }, "network"],
+		// Seconds, more than 0, and not milliseconds
+		[{ updateInterval: 0 }, "updateInterval"],
+		[{ updateInterval: "60" }, "updateInterval"],
+		[{ updateInterval: 60 * 1000 }, "updateInterval"],
+		[{ keepAlive: -300 }, "keepAlive"],
+		[{ keepAlive: null }, "keepAlive"],
+		[{ keepAlive: 5 * 60 * 1000 }, "keepAlive"]
+	];
+	for (const [config, option] of invalid) {
+		const { helper, commands, timers, notifications, logs } = createHelper({ config });
+		await settle();
+		helper.socketNotificationReceived("GET_DEVICES");
+		assert.deepEqual(notifications.map(({ payload }) => [payload.devices, payload.error.code, payload.error.option]), [[[], "INVALID_OPTION", option]], JSON.stringify(config));
+		assert.equal(logs.length, 1);
+		assert.ok(logs[0].startsWith(`error: The option ${option} is not valid: `), logs[0]);
+		assert.equal(commands.length + timers.size, 0);
+	}
+});
+
+test("reports the value that is not valid, and for devices the device", () => {
+	const devices = [{ macAddress: "aa:bb:cc:dd:ee:01", name: "Anna" }, { macAddress: "aa-bb-cc-dd-ee-02", name: "Ben" }];
+	const { helper, notifications, logs } = createHelper({ config: { devices } });
+	helper.socketNotificationReceived("GET_DEVICES");
+	const detail = "{\"macAddress\":\"aa-bb-cc-dd-ee-02\",\"name\":\"Ben\"}";
+	assert.deepEqual(notifications[0].payload.error, { code: "INVALID_OPTION", option: "devices", detail });
+	assert.deepEqual(logs, [`error: The option devices is not valid: ${detail}`]);
+	assert.deepEqual(createHelper({ config: { updateInterval: "60" } }).logs, ["error: The option updateInterval is not valid: \"60\""]);
+});
+
+test("accepts valid options", async () => {
+	const valid = [
+		{ devices: [{ macAddress: "AA:BB:CC:DD:EE:01" }, { ipAddress: "nas.fritz.box" }, { ipAddress: "192.168.178.10" }] },
+		{ network: "192.168.178.0/24" },
+		{ network: "192.168.178.10" },
+		{ updateInterval: 30, keepAlive: 0.5 },
+		{ updateInterval: 3600, keepAlive: 86400 }
+	];
+	for (const config of valid) {
+		const { notifications } = createHelper({ config });
+		await settle();
+		assert.equal(notifications[0].payload.error, null, JSON.stringify(config));
+	}
+});

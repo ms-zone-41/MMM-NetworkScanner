@@ -122,6 +122,14 @@ test("shows a problem of the scan, and below it the command that solves it or wh
 	}
 });
 
+test("shows only the option that is not valid, with its value", () => {
+	const module = createModule();
+	receive(module, [], { code: "INVALID_OPTION", option: "network", detail: "\"-l\"" });
+	assert.deepEqual(warning(module), { text: "The option network is not valid", detail: "\"-l\"" });
+	// Without NO_DEVICES_ONLINE
+	assert.equal(module.getDom().textContent, "The option network is not valid\"-l\"");
+});
+
 test("dims the devices while the scan fails, and shows them as before when it works again", () => {
 	const module = createModule();
 	receive(module, [ANNA, BEN], { code: "ARP_SCAN_NOT_FOUND" });

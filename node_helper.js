@@ -23,6 +23,13 @@ const DEFAULTS = {
 // cap_net_raw, it scans without sudo, see the README.
 const ARP_SCAN = "/usr/sbin/arp-scan";
 
+const MAC_ADDRESS = /^[\da-f]{2}(:[\da-f]{2}){5}$/i;
+// An IP address or a host name, which must not look like an option of ping
+const HOST = /^[A-Za-z\d.][A-Za-z\d.-]*$/;
+// An IPv4 address or network in CIDR notation, e.g. 192.168.178.0/24.
+// arp-scan reports numbers out of range itself.
+const NETWORK = /^\d{1,3}(\.\d{1,3}){3}(\/\d{1,2})?$/;
+
 // What the log says about the problems of a scan, before their detail
 const PROBLEMS = {
 	ARP_SCAN_NOT_FOUND: `arp-scan is not installed at ${ARP_SCAN}. Install it with`,
@@ -39,6 +46,13 @@ module.exports = NodeHelper.create({
 		// No devices to send until the first scan has finished
 		this.state = null;
 		this.error = null;
+		const { option, value } = findInvalidOption(this.config) ?? {};
+		if (option) {
+			const detail = JSON.stringify(value);
+			Log.error(`The option ${option} is not valid: ${detail}`);
+			this.state = { devices: [], error: { code: "INVALID_OPTION", option, detail } };
+			return;
+		}
 		this.devices = this.config.devices.map((device) => ({
 			...device,
 			// arp-scan prints the MAC addresses in lower case
@@ -127,6 +141,41 @@ module.exports = NodeHelper.create({
 		return new Set([...macAddresses, ...hosts.filter((host, index) => answers[index])]);
 	}
 });
+
+// The first option that is not valid, if any, with its value, or for devices
+// the first device that is not valid
+function findInvalidOption(config) {
+	if (!Array.isArray(config.devices) || config.devices.length === 0) {
+		return { option: "devices", value: config.devices };
+	}
+	const index = config.devices.findIndex((device) => !isValidDevice(device));
+	if (index !== -1) {
+		return { option: "devices", value: config.devices[index] };
+	}
+	if (config.network !== undefined && !matches(config.network, NETWORK)) {
+		return { option: "network", value: config.network };
+	}
+	// In seconds, at most an hour or a day: a larger value is likely in
+	// milliseconds, as the default modules of MagicMirror² count
+	for (const [option, max] of [["updateInterval", 3600], ["keepAlive", 86400]]) {
+		if (!(Number.isFinite(config[option]) && config[option] > 0 && config[option] <= max)) {
+			return { option, value: config[option] };
+		}
+	}
+	return null;
+}
+
+// A device needs either a MAC address or an IP address or host name
+function isValidDevice(device) {
+	if (device?.macAddress !== undefined) {
+		return device.ipAddress === undefined && matches(device.macAddress, MAC_ADDRESS);
+	}
+	return matches(device?.ipAddress, HOST);
+}
+
+function matches(value, pattern) {
+	return typeof value === "string" && pattern.test(value);
+}
 
 // Resolves with the MAC addresses that answered arp-scan. Rejects with the
 // problem and its detail: arp-scan exits with 1 for every error, so its error
