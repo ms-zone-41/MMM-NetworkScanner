@@ -166,10 +166,18 @@ test("pings the devices with an IP address or host name, and runs arp-scan only 
 	assert.equal(notifications[0].payload.error, null);
 });
 
-test("names a device without a name by its address", async () => {
-	const { notifications } = createHelper({ config: { devices: [{ macAddress: "AA:BB:CC:DD:EE:01" }, { ipAddress: "192.168.178.10" }] } });
+test("sends the name, the icon, the color, the state and the last answer of each device", async () => {
+	// A device without a name is named by its address
+	const devices = [{ macAddress: "aa:bb:cc:dd:ee:01", name: "Anna", icon: "mobile-screen", color: "orange" }, { macAddress: "AA:BB:CC:DD:EE:02" }];
+	const { notifications } = createHelper({ config: { devices }, arpScan: () => ({ stdout: ANNA_ANSWERS }) });
 	await settle();
-	assert.deepEqual(lastDevices(notifications).map((device) => device.name), ["AA:BB:CC:DD:EE:01", "192.168.178.10"]);
+	assert.deepEqual(notifications[0].payload, {
+		devices: [
+			{ name: "Anna", icon: "mobile-screen", color: "orange", online: true, lastSeen: START },
+			{ name: "AA:BB:CC:DD:EE:02", icon: null, color: null, online: false, lastSeen: null }
+		],
+		error: null
+	});
 });
 
 test("keeps a device online for keepAlive seconds after it last answered", async () => {

@@ -1,4 +1,3 @@
-/* global moment */
 /* MagicMirror²
  * Module: MMM-NetworkScanner
  *
@@ -12,19 +11,11 @@ Module.register("MMM-NetworkScanner", {
 	// scan from config.js itself.
 	defaults: {
 		showOffline: true,
-		showLastSeen: false,
-
+		showLastSeen: false, // true, false or "offline"
+		columns: 1, // devices per row
 		residents: [], // names of devices
 		occupiedCMD: null, // { notification, payload }
-		vacantCMD: null,
-
-		colored: false, // show devices colorcoded with color defined in devices [] //
-		coloredSymbolOnly: false, // show symbol only in color //
-		showLastSeenWhenOffline: false, // show last seen only when offline //
-
-		// sjj: show table as device rows or as device columns
-		showDeviceColumns: false,
-		coloredState: false
+		vacantCMD: null
 	},
 
 	// The node helper reads its options with getServerModuleConfig()
@@ -38,18 +29,10 @@ Module.register("MMM-NetworkScanner", {
 		this.error = null;
 		// Whether a resident is at home, unknown until the first devices arrive
 		this.anyoneHome = null;
-
-		moment.locale(config.language);
 	},
 
-	// Subclass getStyles method.
-	getStyles: function () {
-		return ["MMM-NetworkScanner.css", "font-awesome.css"];
-	},
-
-	// Subclass getScripts method.
-	getScripts: function () {
-		return ["moment.js"];
+	getStyles() {
+		return ["font-awesome.css", "MMM-NetworkScanner.css"];
 	},
 
 	getTranslations() {
@@ -72,7 +55,6 @@ Module.register("MMM-NetworkScanner", {
 		if (notification === "DEVICES") {
 			this.devices = payload.devices;
 			this.error = payload.error;
-			this.validateDevices();
 			// While the scan fails, the devices show the last scan that worked,
 			// which does not tell who came or left since
 			if (!this.error && this.config.residents.length > 0) {
@@ -95,136 +77,104 @@ Module.register("MMM-NetworkScanner", {
 		}
 	},
 
-	// Override dom generator.
-	getDom: function () {
-		var self = this;
+	// The problem of the scan, if there is one, and the devices
+	getDom() {
+		const wrapper = document.createElement("div");
+		wrapper.className = "small";
 
-		var wrapper = document.createElement("div");
-		wrapper.classList.add("small");
-
-		// Display a loading message
 		if (!this.devices) {
-			wrapper.innerHTML = this.translate("LOADING");
+			wrapper.classList.add("dimmed");
+			wrapper.textContent = this.translate("LOADING");
 			return wrapper;
 		}
 
 		if (this.error) {
-			wrapper.appendChild(this.getWarning());
+			wrapper.append(this.getWarning());
 		}
 
-		// Display device status
-		var deviceTable = document.createElement("table");
-		deviceTable.classList.add("deviceTable", "small");
+		const devices = this.devices.filter((device) => device.online || this.config.showOffline);
+		// A warning replaces NO_DEVICES_ONLINE, e.g. for an option that is not
+		// valid, which comes without devices
+		if (devices.length > 0) {
+			wrapper.append(this.getTable(devices));
+		} else if (!this.error) {
+			wrapper.classList.add("dimmed");
+			wrapper.append(this.translate("NO_DEVICES_ONLINE"));
+		}
+		return wrapper;
+	},
+
+	// The devices, in rows of the number of columns
+	getTable(devices) {
+		const table = document.createElement("table");
+		// While the scan fails, the devices are those of the last scan that worked
 		if (this.error) {
-			deviceTable.classList.add("ns-stale");
+			table.className = "ns-stale";
 		}
-
-		// sjj: Show devices in columns
-		// generate header row and device state row
-
-		var headerRow = document.createElement("tr");
-		headerRow.classList.add("headerRow", "dimmed");
-		var devStateRow = document.createElement("tr");
-		devStateRow.classList.add("devStateRow", "dimmed");
-
-		this.devices.forEach(function (device) {
-			if (device.online || self.config.showOffline) {
-				// device row
-				var deviceRow = document.createElement("tr");
-				var deviceOnline = (device.online ? "bright" : "dimmed");
-				deviceRow.classList.add("deviceRow", deviceOnline);
-
-				// Icon
-
-				var deviceCell = document.createElement("td");
-				deviceCell.classList.add("deviceCell");
-				var icon = document.createElement("i");
-				icon.classList.add("fa", "fa-fw", "fa-" + device.icon);
-
-				if (self.config.colored) {
-					icon.style.cssText = "color: " + device.color;
-				}
-
-				if (self.config.colored && !self.config.coloredSymbolOnly && device.lastSeen) {
-					deviceCell.style.cssText = "color: " + device.color;
-				}
-
-				deviceCell.appendChild(icon);
-				deviceCell.innerHTML += device.name;
-
-				deviceRow.appendChild(deviceCell);
-
-				// When last seen
-				if ((self.config.showLastSeen && device.lastSeen && !self.config.showLastSeenWhenOffline)
-					|| (self.config.showLastSeen && !device.lastSeen && self.config.showLastSeenWhenOffline)) {
-					var dateCell = document.createElement("td");
-					dateCell.classList.add("dateCell", "dimmed", "light");
-					if (device.lastSeen) {
-						dateCell.innerHTML = moment(device.lastSeen).fromNow();
-					}
-					deviceRow.appendChild(dateCell);
-				}
-
-				// sjj: Append a new row if showDeviceColumns and showInNewRow are both true
-
-				if (self.config.showDeviceColumns && device.showInNewRow) {
-					// append the previously processed devices to the table
-					deviceTable.appendChild(headerRow);
-					deviceTable.appendChild(devStateRow);
-
-					// generate new line contents
-					headerRow = document.createElement("tr");
-					headerRow.classList.add("headerRow", "dimmed");
-					devStateRow = document.createElement("tr");
-					devStateRow.classList.add("devStateRow", "dimmed");
-				}
-
-				// sjj: fill also header and devState row
-				// header row
-				var headerDevCell = document.createElement("td");
-				headerDevCell.classList.add("headerDevCell");
-				headerDevCell.innerHTML += device.name;
-
-				headerRow.appendChild(headerDevCell);
-
-				// device state row
-				var devStateCell = document.createElement("td");
-				devStateCell.classList.add("devStateCell");
-
-				// color online / offline
-				if (self.config.coloredState) {
-					if (device.online) {
-						icon.style.cssText = "color: " + device.colorStateOnline;
-					} else {
-						icon.style.cssText = "color: " + device.colorStateOffline;
-					};
-				}
-
-				devStateCell.appendChild(icon);
-
-				devStateRow.appendChild(devStateCell);
-
-				// sjj: show as Device rows or as Device columns
-				if (!self.config.showDeviceColumns) {
-					deviceTable.appendChild(deviceRow);
-				}
+		let row;
+		devices.forEach((device, index) => {
+			// columns: 0 shows a list, like columns: 1
+			if (index % Math.max(1, this.config.columns) === 0) {
+				row = document.createElement("tr");
+				table.append(row);
+			}
+			row.append(this.getNameCell(device));
+			if (this.config.showLastSeen) {
+				row.append(...this.getLastSeenCells(device));
 			}
 		});
+		return table;
+	},
 
-		// sjj: show as Device rows or as Device columns
-		if (self.config.showDeviceColumns) {
-			deviceTable.appendChild(headerRow);
-			deviceTable.appendChild(devStateRow);
+	// The name of a device, after its icon in its color if it has one. The
+	// classes ns-online and ns-offline let custom.css style the devices.
+	getNameCell(device) {
+		const name = document.createElement("td");
+		name.className = device.online ? "ns-name ns-online bright" : "ns-name ns-offline dimmed";
+		if (device.icon) {
+			const icon = document.createElement("i");
+			icon.className = `fa-solid fa-fw fa-${device.icon}`;
+			if (device.color) {
+				icon.style.color = device.color;
+			}
+			name.append(icon);
 		}
+		name.append(device.name);
+		return name;
+	},
 
-		if (deviceTable.hasChildNodes()) {
-			wrapper.appendChild(deviceTable);
-		} else if (!this.error) {
-			// Display no devices online message
-			wrapper.innerHTML = this.translate("NO_DEVICES_ONLINE");
+	// The time since a device last answered, in a cell for the value and one
+	// for the unit, e.g. "5" and "m". With showLastSeen "offline", the cells of
+	// the devices that are online stay empty, so that the columns line up.
+	getLastSeenCells(device) {
+		const [value, unit] = this.config.showLastSeen === "offline" && device.online ? ["", ""] : this.formatLastSeen(device.lastSeen);
+		const valueCell = document.createElement("td");
+		valueCell.className = "ns-time-value dimmed light";
+		valueCell.textContent = value;
+		const unitCell = document.createElement("td");
+		unitCell.className = "ns-time-unit dimmed light";
+		unitCell.textContent = unit;
+		return [valueCell, unitCell];
+	},
+
+	// The time since lastSeen as a number and a unit: minutes in the first
+	// hour, then hours up to 100 hours, then days. The units are m, h and d in
+	// every language, so that they stay short.
+	formatLastSeen(lastSeen) {
+		if (lastSeen === null) {
+			return ["-", ""];
 		}
-
-		return wrapper;
+		// lastSeen is from the clock of the server, which may be ahead of the
+		// clock of the browser
+		const minutes = Math.max(0, Math.floor((Date.now() - lastSeen) / 60000));
+		const hours = Math.floor(minutes / 60);
+		if (minutes < 60) {
+			return [String(minutes), "m"];
+		}
+		if (hours < 100) {
+			return [String(hours), "h"];
+		}
+		return [String(Math.floor(hours / 24)), "d"];
 	},
 
 	// The problem of the last scan, and below it its detail from the node
@@ -242,29 +192,6 @@ Module.register("MMM-NetworkScanner", {
 			warning.append(detail);
 		}
 		return warning;
-	},
-
-	// Add the defaults of the keys that only the display uses
-	validateDevices: function () {
-		this.devices.forEach(function (device) {
-			if (!Object.hasOwn(device, "icon")) {
-				device.icon = "question";
-			}
-			if (!Object.hasOwn(device, "color")) {
-				device.color = "#ffffff";
-			}
-			// sjj: coloredState
-			if (!Object.hasOwn(device, "colorStateOnline")) {
-				device.colorStateOnline = "#ffffff";
-			}
-			if (!Object.hasOwn(device, "colorStateOffline")) {
-				device.colorStateOffline = "#ffffff";
-			}
-			// sjj show device in a new rox id mode is show in rows
-			if (!Object.hasOwn(device, "showInNewRow")) {
-				device.showInNewRow = false;
-			}
-		});
 	}
 
 });

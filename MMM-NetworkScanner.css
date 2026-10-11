@@ -1,32 +1,36 @@
-.MMM-NetworkScanner .device {
-  text-align: left;
+.MMM-NetworkScanner .ns-name {
+  white-space: nowrap;
 }
 
-.MMM-NetworkScanner .device i {
-  padding-left: 0;
-  padding-right: 10px;
+/* The space between the devices in a row */
+.MMM-NetworkScanner .ns-name:not(:first-child) {
+  padding-left: 1.5em;
 }
 
-.MMM-NetworkScanner .date {
-  padding-left: 30px;
+.MMM-NetworkScanner .ns-time-value {
+  min-width: 1.8em;
+  padding-left: 0.5em;
   text-align: right;
 }
 
-.MMM-NetworkScanner td {
-  text-align: center;
+.MMM-NetworkScanner .ns-time-unit {
+  padding-left: 0.2em;
+  text-align: left;
+}
+
+.MMM-NetworkScanner i {
+  margin-right: 0.3em;
 }
 
 .MMM-NetworkScanner .ns-warning {
   margin-bottom: 0.5em;
 }
 
-.MMM-NetworkScanner .ns-warning i {
-  margin-right: 0.3em;
-}
-
 /* The detail below the problem, e.g. the command that solves it */
 .MMM-NetworkScanner .ns-warning code {
   display: block;
+  max-width: 28em;
+  overflow-wrap: anywhere;
 }
 
 /* The devices as the last scan that worked found them */

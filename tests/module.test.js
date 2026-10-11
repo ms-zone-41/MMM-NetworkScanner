@@ -8,7 +8,10 @@ const vm = require("node:vm");
 const { JSDOM } = require("jsdom");
 const translations = require("../translations/en.json");
 
-// Load the module like MagicMirror² does, with document and config as globals
+const NOW = Date.UTC(2026, 9, 11, 12, 0);
+
+// Load the module like MagicMirror² does, with document as a global, and with
+// a clock that stands still at NOW
 const document = new JSDOM("<!doctype html><html><body></body></html>").window.document;
 let definition;
 const context = vm.createContext({
@@ -19,17 +22,14 @@ const context = vm.createContext({
 	},
 	Log: { info() {} },
 	document,
-	config: { language: "en" },
-	// The parts of moment that the module uses
-	moment: Object.assign(() => ({ fromNow: () => "5 minutes ago" }), { locale() {} })
+	Date: { now: () => NOW }
 });
 vm.runInContext(fs.readFileSync(path.join(__dirname, "../MMM-NetworkScanner.js"), "utf8"), context);
 
-const NOW = Date.UTC(2026, 9, 11, 12, 0);
-
 // Devices as the node helper sends them
-const ANNA = { name: "Anna", icon: "mobile-screen", online: true, lastSeen: NOW - 5 * 60 * 1000 };
-const BEN = { name: "Ben", online: false, lastSeen: null };
+const ANNA = { name: "Anna", icon: "mobile-screen", color: null, online: true, lastSeen: NOW - 5 * 60 * 1000 };
+const BEN = { name: "Ben", icon: null, color: null, online: false, lastSeen: null };
+const CARL = { name: "Carl", icon: "laptop", color: null, online: true, lastSeen: NOW };
 
 // Start the module with stand-ins for the methods of MagicMirror²
 function createModule(config = {}) {
@@ -59,6 +59,12 @@ function receive(module, devices, error = null) {
 	module.socketNotificationReceived("DEVICES", JSON.parse(JSON.stringify({ devices, error })));
 }
 
+// The texts of the cells, row by row: the name of each device, and with
+// showLastSeen the value and the unit of the time since it was last seen
+function rows(module) {
+	return Array.from(module.getDom().querySelectorAll("tr"), (row) => Array.from(row.children, (cell) => cell.textContent));
+}
+
 // The warning about a problem of the scan: its text, and the detail below it,
 // e.g. the command that solves the problem
 function warning(module) {
@@ -67,11 +73,6 @@ function warning(module) {
 		text: Array.from(element.childNodes).filter((node) => node.nodeType === node.TEXT_NODE).map((node) => node.textContent).join(""),
 		detail: element.querySelector("code")?.textContent
 	};
-}
-
-// The names of the devices that the module shows
-function names(module) {
-	return Array.from(module.getDom().querySelectorAll(".deviceCell"), (cell) => cell.textContent);
 }
 
 // The names of the notifications that the module sent
@@ -89,24 +90,66 @@ test("asks the node helper for the devices when all modules have started", () =>
 test("shows that it is loading until the devices arrive", () => {
 	const module = createModule();
 	assert.equal(module.getDom().textContent, "LOADING");
+	assert.equal(module.getDom().className, "small dimmed");
 	receive(module, [ANNA, BEN]);
-	assert.deepEqual(names(module), ["Anna", "Ben"]);
+	assert.deepEqual(rows(module), [["Anna"], ["Ben"]]);
 });
 
-test("shows the devices that are offline dimmed", () => {
+test("shows each device with its icon in its color, bright while online and dimmed while offline", () => {
 	const module = createModule();
-	receive(module, [ANNA, BEN]);
-	const rows = module.getDom().querySelectorAll("tr");
-	assert.ok(rows[0].classList.contains("bright"));
-	assert.ok(rows[1].classList.contains("dimmed"));
+	receive(module, [{ ...ANNA, color: "orange" }, BEN]);
+	const [anna, ben] = module.getDom().querySelectorAll(".ns-name");
+	assert.equal(anna.className, "ns-name ns-online bright");
+	assert.equal(anna.firstChild.className, "fa-solid fa-fw fa-mobile-screen");
+	assert.equal(anna.firstChild.style.color, "orange");
+	assert.equal(anna.textContent, "Anna");
+	assert.equal(ben.className, "ns-name ns-offline dimmed");
+	assert.equal(ben.innerHTML, "Ben");
+});
+
+test("shows the names as text, not as HTML", () => {
+	const module = createModule();
+	receive(module, [{ ...BEN, name: "<b>Ben</b> & Co" }]);
+	assert.deepEqual(rows(module), [["<b>Ben</b> & Co"]]);
+	assert.equal(module.getDom().querySelector("b"), null);
+});
+
+test("shows the devices in rows of the number of columns, by default one per row", () => {
+	const layouts = [
+		[{}, [["Anna"], ["Ben"], ["Carl"]]],
+		// columns: 0 shows a list, too
+		[{ columns: 0 }, [["Anna"], ["Ben"], ["Carl"]]],
+		[{ columns: 2 }, [["Anna", "Ben"], ["Carl"]]]
+	];
+	for (const [config, expected] of layouts) {
+		const module = createModule(config);
+		receive(module, [ANNA, BEN, CARL]);
+		assert.deepEqual(rows(module), expected, JSON.stringify(config));
+	}
 });
 
 test("hides the devices that are offline with showOffline false, and shows when none is online", () => {
 	const module = createModule({ showOffline: false });
 	receive(module, [ANNA, BEN]);
-	assert.deepEqual(names(module), ["Anna"]);
+	assert.deepEqual(rows(module), [["Anna"]]);
 	receive(module, [{ ...ANNA, online: false }, BEN]);
 	assert.equal(module.getDom().textContent, "No devices online");
+	assert.equal(module.getDom().className, "small dimmed");
+});
+
+test("shows the time since each device was last seen in minutes, hours up to 100 hours, or days", () => {
+	const module = createModule({ showLastSeen: true });
+	// -1: the clock of the server may be a little ahead of that of the browser
+	const minutes = [-1, 0, 59, 60, 100 * 60 - 1, 100 * 60, 41 * 24 * 60 - 1];
+	receive(module, [BEN, ...minutes.map((ago) => ({ ...BEN, lastSeen: NOW - ago * 60 * 1000 }))]);
+	assert.deepEqual(rows(module).map((cells) => cells.slice(1)), [["-", ""], ["0", "m"], ["0", "m"], ["59", "m"], ["1", "h"], ["99", "h"], ["4", "d"], ["40", "d"]]);
+});
+
+test("shows the time since a device was last seen only for the devices that are offline with showLastSeen \"offline\"", () => {
+	const module = createModule({ showLastSeen: "offline", columns: 2 });
+	receive(module, [ANNA, BEN, { ...CARL, online: false }]);
+	// Empty cells for Anna, who is online, keep the columns in line
+	assert.deepEqual(rows(module), [["Anna", "", "", "Ben", "-", ""], ["Carl", "0", "m"]]);
 });
 
 test("shows a problem of the scan, and below it the command that solves it or what went wrong", () => {
@@ -134,7 +177,7 @@ test("dims the devices while the scan fails, and shows them as before when it wo
 	const module = createModule();
 	receive(module, [ANNA, BEN], { code: "ARP_SCAN_NOT_FOUND" });
 	assert.ok(module.getDom().querySelector("table").classList.contains("ns-stale"));
-	assert.deepEqual(names(module), ["Anna", "Ben"]);
+	assert.deepEqual(rows(module), [["Anna"], ["Ben"]]);
 	receive(module, [ANNA, BEN]);
 	assert.equal(warning(module), null);
 	assert.ok(!module.getDom().querySelector("table").classList.contains("ns-stale"));

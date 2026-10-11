@@ -20,8 +20,7 @@ export default defineConfig([
 			globals: {
 				...globals.browser,
 				Log: "readonly",
-				Module: "readonly",
-				config: "readonly"
+				Module: "readonly"
 			}
 		}
 	},

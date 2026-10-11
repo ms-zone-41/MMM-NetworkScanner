@@ -56,10 +56,12 @@ module.exports = NodeHelper.create({
 			return;
 		}
 		this.devices = this.config.devices.map((device) => ({
-			...device,
 			// arp-scan prints the MAC addresses in lower case
 			macAddress: device.macAddress?.toLowerCase(),
+			ipAddress: device.ipAddress,
 			name: device.name ?? device.macAddress ?? device.ipAddress,
+			icon: device.icon ?? null,
+			color: device.color ?? null,
 			online: false,
 			lastSeen: null
 		}));
@@ -111,7 +113,11 @@ module.exports = NodeHelper.create({
 		if (this.stopped) {
 			return;
 		}
-		this.state = { devices: this.devices, error: this.error };
+		this.state = {
+			// What the module shows of the devices
+			devices: this.devices.map(({ name, icon, color, online, lastSeen }) => ({ name, icon, color, online, lastSeen })),
+			error: this.error
+		};
 		this.sendSocketNotification("DEVICES", this.state);
 		this.timer = setTimeout(() => this.scan(), this.config.updateInterval * 1000);
 	},
