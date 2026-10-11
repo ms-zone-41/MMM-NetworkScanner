@@ -222,6 +222,10 @@ node --run lint
 
 GitHub runs both for every push and pull request.
 
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md).
+
 ## License
 
 MIT, see [LICENSE](LICENSE). [Ian Perrin](https://github.com/ianperrin/MMM-NetworkScanner) wrote the module. [spitzlbergerj](https://github.com/spitzlbergerj/MMM-NetworkScanner) and [nsprawling](https://github.com/nsprawling/MMM-NetworkScanner) maintained forks of it, which this one continues.
