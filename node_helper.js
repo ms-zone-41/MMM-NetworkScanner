@@ -10,98 +10,107 @@ const Log = require("logger");
 const ping = require("ping");
 const sudo = require("sudo");
 
+// The options of the scan and their defaults. The node helper reads them from
+// config.js only: any device that the ipWhitelist of MagicMirror² lets in can
+// send socket notifications to it.
+const DEFAULTS = {
+	devices: [],
+	network: undefined,
+	updateInterval: 60,
+	keepAlive: 300
+};
+
 module.exports = NodeHelper.create({
+	// getServerModuleConfig() came with MagicMirror² 2.38.0
+	requiresVersion: "2.38.0",
 
-	// Override socketNotificationReceived method.
-	socketNotificationReceived: function (notification, payload) {
-		Log.debug(this.name + " received " + notification);
+	start() {
+		this.config = { ...DEFAULTS, ...this.getServerModuleConfig() };
+		this.devices = this.config.devices.map((device) => ({
+			...device,
+			// arp-scan prints the MAC addresses in lower case
+			macAddress: device.macAddress?.toLowerCase(),
+			name: device.name ?? device.macAddress ?? device.ipAddress,
+			online: false,
+			lastSeen: null
+		}));
+		// No devices to send until the first scan has finished
+		this.state = null;
+		this.scan();
+	},
 
-		if (notification === "CONFIG") {
-			this.config = payload;
-			return true;
-		}
+	stop() {
+		clearTimeout(this.timer);
+	},
 
-		if (notification === "SCAN_NETWORK") {
-			this.scanNetworkMAC();
-			this.scanNetworkIP();
-			return true;
+	// The module asks for the devices once all modules have started
+	socketNotificationReceived(notification) {
+		if (notification === "GET_DEVICES" && this.state) {
+			this.sendSocketNotification("DEVICES", this.state);
 		}
 	},
 
-	scanNetworkMAC: function () {
-		Log.debug(this.name + " is performing arp-scan");
-
-		var self = this;
-		// Target hosts/network supplied in config or entire localnet
-		var arpHosts = this.config.network || "-l";
-		var arp = sudo(["arp-scan", "-q", arpHosts]);
-		var buffer = "";
-		var errstream = "";
-		var discoveredMacAddresses = [];
-
-		arp.stdout.on("data", function (data) {
-			buffer += data;
-		});
-
-		arp.stderr.on("data", function (data) {
-			errstream += data;
-		});
-
-		arp.on("error", function (err) {
-			errstream += err;
-		});
-
-		arp.on("close", function (code) {
-			if (code !== 0) {
-				Log.debug(self.name + " received an error running arp-scan: " + code + " - " + errstream);
-			} else {
-				// Parse the ARP-SCAN table response
-				var rows = buffer.split("\n");
-				for (var i = 2; i < rows.length; i++) {
-					var cells = rows[i].split("\t").filter(String);
-					if (cells && cells[1]) {
-						discoveredMacAddresses.push(cells[1].toUpperCase());
-					}
-				}
+	// Scan the network, send the devices to the module, and scan again
+	// updateInterval seconds after the scan has finished. So there is one scan
+	// at a time, however many browsers show the mirror.
+	async scan() {
+		const found = await this.findAddresses();
+		const now = Date.now();
+		for (const device of this.devices) {
+			if (found.has(device.macAddress ?? device.ipAddress)) {
+				device.lastSeen = now;
 			}
-
-			// The configured devices that arp-scan found, in their order
-			var discoveredDevices = self.config.devices.filter(function (device) {
-				return device.macAddress && discoveredMacAddresses.includes(device.macAddress.toUpperCase());
-			});
-			discoveredDevices.forEach(function (device) {
-				device.online = true;
-			});
-			Log.debug(self.name + " arp scan addresses: ", discoveredMacAddresses);
-			Log.debug(self.name + " arp scan devices: ", discoveredDevices);
-			self.sendSocketNotification("MAC_ADDRESSES", discoveredDevices);
-			return;
-		});
+			// Sleeping phones skip answers, so a device counts as online for
+			// keepAlive seconds after it last answered
+			device.online = device.lastSeen !== null && now - device.lastSeen < this.config.keepAlive * 1000;
+		}
+		Log.debug(`These addresses answered: ${[...found].join(", ") || "none"}`);
+		this.state = { devices: this.devices };
+		this.sendSocketNotification("DEVICES", this.state);
+		this.timer = setTimeout(() => this.scan(), this.config.updateInterval * 1000);
 	},
 
-	scanNetworkIP: function () {
-		if (!this.config.devices) {
-			return;
-		}
-
-		Log.debug(this.name + " is performing ip address scan");
-
-		var discoveredDevices = [];
-		var self = this;
-		this.config.devices.forEach(function (device) {
-			Log.debug(self.name + " is checking device: ", device.name);
-			if ("ipAddress" in device) {
-				Log.debug(self.name + " is pinging ", device.ipAddress);
-				ping.sys.probe(device.ipAddress, function (isAlive) {
-					device.online = isAlive;
-					Log.debug(self.name + " ping result: ", [device.name, device.online]);
-					if (device.online) {
-						discoveredDevices.push(device);
-					}
-					self.sendSocketNotification("IP_ADDRESS", device);
-				});
-			}
-		});
+	// Run arp-scan for the devices with a MAC address and ping the others, all
+	// at the same time. Resolves with the addresses that answered.
+	async findAddresses() {
+		const hosts = this.devices.filter((device) => device.ipAddress).map((device) => device.ipAddress);
+		const [macAddresses, ...answers] = await Promise.all([
+			this.devices.some((device) => device.macAddress) ? arpScan(this.config.network) : [],
+			...hosts.map((host) => probe(host))
+		]);
+		return new Set([...macAddresses, ...hosts.filter((host, index) => answers[index])]);
 	}
-
 });
+
+// Resolves with the MAC addresses that answered arp-scan
+function arpScan(network) {
+	return new Promise((resolve) => {
+		const arp = sudo(["arp-scan", "--quiet", "--plain", network ?? "--localnet"]);
+		let stdout = "";
+		let stderr = "";
+		arp.stdout.on("data", (data) => {
+			stdout += data;
+		});
+		arp.stderr.on("data", (data) => {
+			stderr += data;
+		});
+		arp.on("error", (error) => {
+			Log.debug(`arp-scan failed: ${error.message}`);
+			resolve([]);
+		});
+		arp.on("close", (code) => {
+			if (code !== 0) {
+				Log.debug(`arp-scan failed with code ${code}: ${stderr}`);
+			}
+			// One line for each host that answered: IP<TAB>MAC
+			resolve(stdout.split("\n").map((line) => line.split("\t")[1]).filter(Boolean));
+		});
+	});
+}
+
+// Resolves with whether the host answered ping
+function probe(host) {
+	return new Promise((resolve) => {
+		ping.sys.probe(host, (alive) => resolve(alive === true));
+	});
+}
