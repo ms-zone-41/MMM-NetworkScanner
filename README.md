@@ -1,259 +1,227 @@
-Note: I no longer use MagicMirror and this will not be subject to contribution
-
 # MMM-NetworkScanner
-A module for MagicMirror which determines the status of devices on the network based on their MAC address. It can also look up devices by IP addresses or hostnames. Static IP addresses work more consistently.
 
-## Changes
+A [MagicMirror²](https://magicmirror.builders) module that shows which devices are on your network, e.g. whose phone is at home.
 
-Forked with intention of maintaining:
- - 1st Updates - Fixing CSS issue to center icons in columns, amend install readme & spelling corrections
+![The devices in a list, with their icons and the time since they were last seen](screenshot.png)
 
-## Example
+## Features
 
-devices as rows<br/>
-![](.github/example.png)
-
-devices as columns<br/>
-![](.github/example-columns2.jpg)
-
-devices as columns with newLines<br/>
-![](.github/exampleColumnsNewLines.jpg)
+- Phones and other devices by their MAC address, found with [arp-scan](https://github.com/royhills/arp-scan), and servers by their IP address or host name, found with ping
+- The time since each device was last seen, e.g. `5 m`, `2 h` or `4 d`, also after a restart of MagicMirror²
+- A list or several columns, with Font Awesome icons in the colors of your choice
+- Notifications when the first resident comes home and when the last one leaves, e.g. to turn the monitor on and off
+- Messages on the mirror that say why the module cannot scan
+- English and German
 
 ## Installation
 
-In your terminal, install `arp-scan`:
-````bash
-cd ~/
-sudo apt-get install arp-scan   
-````
+The module requires MagicMirror² 2.38.0 or newer on Linux, e.g. Raspberry Pi OS. Install arp-scan, allow it to scan the network without sudo, and clone the module into the `modules` directory of MagicMirror²:
 
-*Optionally*, update the vendor database used by `arp-scan`:
-````bash
-cd /usr/share/arp-scan
-sudo get-iab -v -u http://standards-oui.ieee.org/iab/iab.txt
-sudo get-oui -v -u http://standards-oui.ieee.org/oui/oui.txt
-````
-
-Clone this repository into the MagicMirror Modules folder:
-````bash
+```shell
+sudo apt install arp-scan
+sudo setcap cap_net_raw+ep /usr/sbin/arp-scan
 cd ~/MagicMirror/modules
-git clone https://github.com/nsprawling/MMM-NetworkScanner.git
-````
+git clone https://github.com/ms-zone-41/MMM-NetworkScanner
+```
 
-Install the dependencies (`sudo`, `ping`) in the MMM-NetworkScanner module folder:
-````
-cd ~/MagicMirror/modules/MMM-NetworkScanner
-npm install
-````
+Only devices with a `macAddress` need arp-scan: if all your devices have an `ipAddress`, skip the first two commands. The module has no dependencies to install with npm. Add it to your configuration, see below, and restart MagicMirror².
 
-Add the module to the modules array in the `config/config.js` file:
-````javascript
-    {
-        module: 'MMM-NetworkScanner',
-        position: 'top_left', 
-        config: {
-            // Optional config options
-        }        
-    },
-````
+## Update
 
-## Config Options
-| **Option** | **Default** | **Description** |
-| --- | --- | --- |
-| `devices` | [] | an array of devices to be found on the network. See [Device object](#device-object) |
-| `network` | `-l` | `optional` a network mask to limit the scope of the network scan, i.e. `192.168.0.0/24`. If omitted, or set to `-l`, the entire network will be scanned. |
-| `showUnknown` | true | `optional` shows devices found on the network even if not specified in the `devices` option |
-| `showOffline` | true | `optional` shows devices specified in the `devices` option even when offline |
-| `showLastSeen` | false | `optional` shows when the device was last seen e.g. "Device Name - last seen 5 minutes ago" |
-| `keepAlive` | 180 | `optional` how long (in seconds) a device should be considered 'alive' since it was last found on the network |
-| `updateInterval` | 20 | `optional` how often (in seconds) the module should scan the network |
-| `sort` | `true` | `optional` sorts the devices in alphabetical order when shown in the mirror |
-| `residents` | [] | `optional` an array of names of the devices that should be monitored if they are online |
-| `occupiedCMD` | `{}` | `optional` the notification to be sent if one of the devices in the `residents` array is found online. See [Notification Example](#notification-example). |
-| `vacantCMD` | `{}` | `optional` the notification to be sent if **NONE** of the devices in the `residents` array is found online. See [Notification Example](#notification-example). |
-| `debug` | `false` | `optional` adds extended messages to the log. |
-| `colored` | `false` | `optional` determines whether devices are shown in the color defined in the devices section. |
-| `coloredSymbolOnly` | `false` | `optional` shows only the devices symbol. |
-| `showLastSeenWhenOffline:` | `false` | `optional` show last seen only when offline. |
-| `showDeviceColumns:` | `false` | `optional` show devices as columns. |
-| `coloredState:` | `false` | `optional` determines whether devices are shown in a color defined in the devices section and controlled by the online / offline state. |
-
-
-
-#### Device Object
-The device object contains information about the devices to be found on the network.
-
-| **Key** | **Description** | **Example** |
-| --- | --- | --- |
-| `macAddress` | `optional` the MAC address of the device. | `aa:bb:cc:11:22:33` |
-| `ipAddress` | `optional` the IP address **or** host name of the device. | `192.168.0.1` or `github.com` |
-| `name` | `optional` the friendly name for the device. If omitted, the `macAddress` or `ipAddress` will be used. | `Phone` or `Router` |
-| `icon` | `optional` the symbol to show next to the device. See [Font Awesome](http://fontawesome.io/cheatsheet/) cheatsheet. If omitted, `question` will be used. | There are a huge number of icons to choose from. Here are some examples: `globe`, `server`, `desktop`, `laptop`, `mobile`, `wifi`. |
-| `color` | `optional` the color the device should be display with. | `#ff0000`  for red |
-| `colorStateOnline` | `optional` the color the device should be display with when it is online. | `#ff0000`  for red |
-| `colorStateOffline` | `optional` the color the device should be display with when it is offline. | `#ff0000`  for red |
-| `showInNewRow` | `optional` add a line break if showDeviceColumns = true. | false  for no line break |
-
-**Note** A device object should only contain either a `macAddress` *or* an `ipAddress` **NOT** both.
-
-**Note** The `coloredState` parameter overwrites the `colored` parameter if both parameters are set to true. With the parameter `coloredSymbolOnly` the status driven coloring can be limited to the icon. 
-
-##### Generating the device array
-The `devices` array can be generated by using `arps2mm.sh` from within the `scripts` folder. The output of the script will include all the devices found on the network, using the name of the vendor identified from the arp-scan result. Run the following script, edit the device names and icons then copy the array into the config file:
-
-````bash
-cd ~/MagicMirror/modules/MMM-NetworkScanner/scripts
-chmod +x arps2mm.sh
-./arps2mm.sh
-````
-
-**Note** Updating the vendor database is recommended before generating the device array. See the [installation instructions](#installation) for details.
-
-**Note 2**
-When using columns, you can even the width of each column in the table by applying the below in your custom.css file:
-
-````css
-.MMM-NetworkScanner table {
-    max-width: *your max width*;
-    table-layout: fixed;
-}
-
-````
-
-### Example Config
-
-#### Simple example
-Scans the network (using the default `updateInterval`) and display the status of the four specified devices:
-````javascript
-    {
-        module: "MMM-NetworkScanner",
-        position: "top_left",
-        header: "Who's home",
-        config: {
-            devices: [
-                { macAddress: "1a:1b:1c:1a:1b:1c", name: "Dad", icon: "male"},
-                { macAddress: "2a:2b:2c:2a:2b:2c", name: "Mum", icon: "female"},
-                { macAddress: "3a:3b:3c:3a:3b:3c", name: "Son", icon: "male"},
-                { macAddress: "4a:4b:4c:4a:4b:4c", name: "Daughter", icon: "female"}
-            ],
-            showUnknown: false,
-        }
-     }
-````
-#### example with columns
-Displays the specified devices as columns:
-````javascript
-    {
-        module: "MMM-NetworkScanner",
-        position: "top_left",
-        header: "Geräte im Netzwerk",
-        config: {
-            devices: [
-                { 
-                    ipAddress: "192.168.178.101", 
-                    name: "UniFi", 
-                    icon: "server", 
-                    colorStateOnline: "green", 
-                    colorStateOffline: "red",
-                },
-                { 
-                    ipAddress: "192.168.178.31", 
-                    name: "QNAP1", 
-                    icon: "database", 
-                    colorStateOnline: "green", 
-                    colorStateOffline: "red",
-                 },
-                { 
-                    ipAddress: "192.168.178.32", 
-                    name: "QNAP2", 
-                    icon: "database", 
-                    colorStateOnline: "green", 
-                    colorStateOffline: "red",
-                    showInNewRow: true,
-                },
-                { 
-                    ipAddress: "192.168.178.33", 
-                    name: "QNAP3", 
-                    icon: "database", 
-                    colorStateOnline: "green", 
-                    colorStateOffline: "red",
-                },
-                { 
-                    ipAddress: "192.168.178.134", 
-                    name: "APS", 
-                    icon: "wifi", 
-                    colorStateOnline: "green", 
-                    colorStateOffline: "red",
-                 },
-
-            ],
-            sort: false,
-            showUnknown: false,
-            showDeviceColumns: true,
-            coloredState: true,
-        }
-    }
-````
-#### Keep alive example
-Scan every 5 seconds and only display the specified devices whether they are online or offline. Devices will continue to be shown as online (i.e. kept alive) for 5 mins after they are last found:
-````javascript
-    {
-        module: 'MMM-NetworkScanner',
-        position: 'top_left', 
-        config: {
-            devices: [
-                    { ipAddress: "github.com", name: "Github", icon: "globe"},
-                    { macAddress: "1a:1b:1c:1a:1b:1c", name: "Server", icon: "server"},
-                    { macAddress: "2a:2b:2c:2a:2b:2c", name: "Desktop", icon: "desktop"},
-                    { ipAddress: "10.1.1.10", name: "Laptop", icon: "laptop"},
-                    { macAddress: "4a:4b:4c:4a:4b:4c", name: "Mobile", icon: "mobile"},
-                ],
-            showUnknown: false,
-            showOffline: true,
-            keepAlive: 300,
-            updateInterval: 5
-        }        
-    },
-````
-
-#### Notification example
-As with the previous example, this scans every 5 seconds and only display the specified devices whether they are online or offline. Devices will continue to be shown as online (i.e. kept alive) for 5 mins after they are last found on the network.
-
-In addition, the module will send a notification (`occupiedCMD`) to turn the monitor on when either `Mobile` or `Laptop` (the `residents`) are found on the network. Another notification (`vacantCMD`) will be sent when neither device is online:
-````javascript
-    {
-        module: 'MMM-NetworkScanner',
-        position: 'top_left', 
-        config: {
-            devices: [
-                    { ipAddress: "github.com", name: "Github", icon: "globe"},
-                    { macAddress: "1a:1b:1c:1a:1b:1c", name: "Server", icon: "server"},
-                    { macAddress: "2a:2b:2c:2a:2b:2c", name: "Desktop", icon: "desktop"},
-                    { ipAddress: "10.1.1.10", name: "Laptop", icon: "laptop"},
-                    { macAddress: "4a:4b:4c:4a:4b:4c", name: "Mobile", icon: "mobile"},
-                ],
-            showUnknown: false,
-            showOffline: true,
-            keepAlive: 300,
-            updateInterval: 5,
-            residents: ["Mobile", "Laptop"],
-            occupiedCMD: {notification: 'REMOTE_ACTION', payload: {action: 'MONITORON'}},
-            vacantCMD  : {notification: 'REMOTE_ACTION', payload: {action: 'MONITOROFF'}},
-
-        }        
-    },
-````
-**NOTE** The `REMOTE_ACTION` notifications (`MONITORON` and `MONITOROFF`) actions require the [MMM-Remote-Control](https://github.com/Jopyth/MMM-Remote-Control) module to be installed.
-
-## Updating
-
-To update the module to the latest version, use your terminal to go to your MMM-NetworkScanner module folder and type the following command:
-
-````
+```shell
 cd ~/MagicMirror/modules/MMM-NetworkScanner
 git pull
-npm install
-```` 
+```
 
-If you haven't changed the modules, this should work without any problems. 
-Type `git status` to see your changes, if there are any, you can reset them with `git reset --hard`. After that, git pull should be possible.
+Then restart MagicMirror². To update from version 1, see [Upgrading from version 1](#upgrading-from-version-1).
+
+## Configuration
+
+Add the module to the `modules` array in `config/config.js`, with your devices. This example shows the list in the screenshot above: three phones and a laptop by their MAC address, and a printer by its IP address:
+
+```js
+	{
+		module: "MMM-NetworkScanner",
+		position: "top_left",
+		header: "Who is home",
+		config: {
+			devices: [
+				{ macAddress: "aa:bb:cc:dd:ee:01", name: "Emma", icon: "mobile-screen" },
+				{ macAddress: "aa:bb:cc:dd:ee:02", name: "Noah", icon: "mobile-screen" },
+				{ macAddress: "aa:bb:cc:dd:ee:03", name: "Mia", icon: "mobile-screen" },
+				{ macAddress: "aa:bb:cc:dd:ee:04", name: "Laptop", icon: "laptop" },
+				{ ipAddress: "192.168.178.10", name: "Printer", icon: "print" }
+			],
+			showLastSeen: true
+		}
+	},
+```
+
+To find the MAC address of a phone, see [Finding the MAC address of a device](#finding-the-mac-address-of-a-device).
+
+### Options
+
+| Option | Description | Default |
+| --- | --- | --- |
+| `devices` | The devices to show, in this order, see [Devices](#devices). | Required |
+| `network` | The network that arp-scan scans, in CIDR notation, e.g. `"192.168.178.0/24"`. Set it if your network is too large to scan within 30 seconds. | The local network of `interface` |
+| `interface` | The network interface that arp-scan uses, e.g. `"wlan0"`. Set it if the mirror is connected to more than one network, e.g. by Ethernet and Wi-Fi. | The first connected interface |
+| `updateInterval` | The time between two scans, in seconds, at most 3600. | `60` |
+| `keepAlive` | How long a device counts as online after it last answered, in seconds, at most 86400. | `300` |
+| `showOffline` | Also show the devices that are offline, dimmed. | `true` |
+| `showLastSeen` | Show the time since each device last answered, or `-` if it never has: `true` for all devices, `"offline"` only for the devices that are offline. | `false` |
+| `columns` | The number of devices in a row. `1` shows a list. | `1` |
+| `residents` | The `name`s of the devices that tell whether someone is at home, e.g. phones. | `[]` |
+| `occupiedCMD` | The notification to send when the first resident comes home, as `{ notification: "…", payload: … }`. | `null` |
+| `vacantCMD` | The notification to send when the last resident has left, like `occupiedCMD`. | `null` |
+
+If you add the module more than once, every entry shows the devices of the first one.
+
+### Devices
+
+Each device in `devices` has either a `macAddress` or an `ipAddress`:
+
+| Key | Description |
+| --- | --- |
+| `macAddress` | The MAC address of the device, with colons, e.g. `"aa:bb:cc:dd:ee:01"`. |
+| `ipAddress` | The IPv4 address of the device, e.g. `"192.168.178.10"`, which the module pings. Give the device a fixed address in your router. A host name works only if it resolves while the device is off, so not a `.local` name. |
+| `name` | The name to show. By default the address. |
+| `icon` | The name of a [Font Awesome](https://fontawesome.com/icons) icon of the free solid style, without `fa-`, e.g. `"mobile-screen"`. No icon by default. |
+| `color` | The color of the icon, as in CSS, e.g. `"orange"` or `"#ff0000"`. By default the color of the name. |
+
+The names have the class `ns-online` or `ns-offline`, so `config/custom.css` can style them, e.g. to show the devices that are offline in red:
+
+```css
+.MMM-NetworkScanner .ns-offline {
+  color: #ff6666;
+}
+```
+
+### Examples
+
+Four phones in two columns:
+
+![Four phones in two columns, with the time since they were last seen](columns.png)
+
+```js
+	{
+		module: "MMM-NetworkScanner",
+		position: "top_left",
+		header: "Who is home",
+		config: {
+			devices: [
+				{ macAddress: "aa:bb:cc:dd:ee:01", name: "Emma" },
+				{ macAddress: "aa:bb:cc:dd:ee:02", name: "Noah" },
+				{ macAddress: "aa:bb:cc:dd:ee:03", name: "Mia" },
+				{ macAddress: "aa:bb:cc:dd:ee:04", name: "Ben" }
+			],
+			showLastSeen: true,
+			columns: 2
+		}
+	},
+```
+
+The monitor on while someone is at home, with the module [MMM-Remote-Control](https://github.com/Jopyth/MMM-Remote-Control), which turns it on and off for the notification `REMOTE_ACTION`:
+
+```js
+	{
+		module: "MMM-NetworkScanner",
+		position: "top_left",
+		config: {
+			devices: [
+				{ macAddress: "aa:bb:cc:dd:ee:01", name: "Emma", icon: "mobile-screen" },
+				{ macAddress: "aa:bb:cc:dd:ee:02", name: "Noah", icon: "mobile-screen" }
+			],
+			residents: ["Emma", "Noah"],
+			occupiedCMD: { notification: "REMOTE_ACTION", payload: { action: "MONITORON" } },
+			vacantCMD: { notification: "REMOTE_ACTION", payload: { action: "MONITOROFF" } }
+		}
+	},
+```
+
+When the module starts, it also sends `occupiedCMD` if a resident is at home, and `vacantCMD` if not.
+
+### Finding the MAC address of a device
+
+Phones use a private Wi-Fi address, a MAC address of their own for each network. Take it from the Wi-Fi settings of the phone, not from its About screen, which shows the hardware address:
+
+- iPhone: Settings › Wi-Fi › (i) next to your network shows it as Wi-Fi Address. Set Private Wi-Fi Address to Fixed there, as Rotating changes the address about every two weeks.
+- Android: the details of your network in the Wi-Fi settings show it. By default, it stays the same for the network.
+
+For other devices, run arp-scan as the user that runs MagicMirror², without sudo, which also checks that the module can scan. It lists the devices on your network with their IP address, their MAC address and the maker of their network card:
+
+```shell
+/usr/sbin/arp-scan --localnet --plain
+```
+
+```text
+192.168.178.1	e0:28:6d:00:00:01	AVM Audiovisuelles Marketing und Computersysteme GmbH
+192.168.178.20	aa:bb:cc:dd:ee:01	(Unknown: locally administered)
+192.168.178.21	aa:bb:cc:dd:ee:02	(Unknown: locally administered)
+```
+
+Private Wi-Fi addresses show as "locally administered". To tell which line is which device, compare the IP addresses with the device list of your router.
+
+## Troubleshooting
+
+If the module cannot scan, it says why above the devices, and below that the command that solves the problem or what went wrong. The log of MagicMirror² says the same. Until a scan works again, the module shows the devices dimmed, as the last scan that worked found them, and sends no `occupiedCMD` or `vacantCMD`.
+
+| Message | What to do |
+| --- | --- |
+| arp-scan is not installed | Run the first two commands of [Installation](#installation). |
+| arp-scan is not allowed to scan the network | Run `sudo setcap cap_net_raw+ep /usr/sbin/arp-scan`. An update of arp-scan removes the capability, so run it again after one. |
+| The network scan failed | Check `network`, `interface` and the addresses of the devices; a host name must always resolve, see [Devices](#devices). To see the whole error, run the command in a terminal, e.g. `/usr/sbin/arp-scan --interface=wlan0 --localnet` or `ping -c 1 192.168.178.10`. |
+| The option … is not valid | Correct the value shown below the message in `config/config.js`, see [Options](#options), and restart MagicMirror². |
+
+If the module does not show at all, MagicMirror² may be older than 2.38.0: its log then says "Version is incorrect. Skip module: 'MMM-NetworkScanner'". [Upgrade MagicMirror²](https://docs.magicmirror.builders/getting-started/upgrade-guide.html).
+
+If a device stays offline although it is at home:
+
+- Run `/usr/sbin/arp-scan --localnet --plain` while the device is on. If its MAC address is missing, the device uses another one, e.g. a new private Wi-Fi address after the phone forgot your network, or the mirror scans another network: then set `interface`.
+- A device that does not answer ping, e.g. a Windows PC, needs a `macAddress` instead of an `ipAddress`.
+- If a phone goes offline now and then while it is at home, raise `keepAlive`.
+
+## Upgrading from version 1
+
+Version 2 is a rewrite with a new configuration, and only this repository has it. To upgrade:
+
+1. [Upgrade MagicMirror²](https://docs.magicmirror.builders/getting-started/upgrade-guide.html) to 2.38.0 or newer.
+2. Replace the module with a new clone, and allow arp-scan to scan without sudo:
+
+   ```shell
+   cd ~/MagicMirror/modules
+   rm -rf MMM-NetworkScanner
+   git clone https://github.com/ms-zone-41/MMM-NetworkScanner
+   sudo setcap cap_net_raw+ep /usr/sbin/arp-scan
+   ```
+
+3. Do not keep the entry of version 1 disabled in `config/config.js`: the module takes its devices from the first `MMM-NetworkScanner` entry, even a disabled one.
+4. Replace the options that are gone, see the table below. Brand icons, e.g. `apple`, and outline icons whose names end in `-o`, e.g. `hdd-o`, no longer show: use solid icons, e.g. `mobile-screen` or `hard-drive`.
+5. Restart MagicMirror².
+
+| Option of version 1 | In version 2 |
+| --- | --- |
+| `showUnknown` | Gone, see [Finding the MAC address of a device](#finding-the-mac-address-of-a-device). |
+| `sort` | Gone: the devices appear in the order of `devices`. |
+| `debug` | Add `"DEBUG"` to the `logLevel` of MagicMirror². |
+| `colored`, `coloredSymbolOnly`, `coloredState`, and `colorStateOnline` and `colorStateOffline` of the devices | The `color` of each device, and `config/custom.css`, see [Devices](#devices). |
+| `showDeviceColumns`, and `showInNewRow` of the devices | `columns` |
+| `showLastSeenWhenOffline` | `showLastSeen: "offline"` |
+| `showOffline` of the devices | `showOffline` |
+| `network: "-l"` | Leave out `network`. |
+
+## Development
+
+The tests use [node:test](https://nodejs.org/api/test.html) and the development dependencies of the module. Run them and [ESLint](https://eslint.org) in the module directory:
+
+```shell
+npm install
+node --run test
+node --run lint
+```
+
+GitHub runs both for every push and pull request.
+
+## License
+
+MIT, see [LICENSE](LICENSE). [Ian Perrin](https://github.com/ianperrin/MMM-NetworkScanner) wrote the module. [spitzlbergerj](https://github.com/spitzlbergerj/MMM-NetworkScanner) and [nsprawling](https://github.com/nsprawling/MMM-NetworkScanner) maintained forks of it, which this one continues.
