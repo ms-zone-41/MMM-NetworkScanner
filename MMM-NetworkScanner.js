@@ -12,12 +12,10 @@ Module.register("MMM-NetworkScanner", {
 	defaults: {
 		devices: [], // an array of device objects e.g. { macAddress: "aa:bb:cc:11:22:33", name: "DEVICE-NAME", icon: "FONT-AWESOME-ICON"}
 		network: "-l", // a Local Network IP mask to limit the mac address scan, i.e. `192.168.0.0/24`. Use `-l` for the entire localnet
-		showUnknown: true, // shows devices found on the network even if not specified in the 'devices' option
 		showOffline: true, // shows devices specified in the 'devices' option even when offline
 		showLastSeen: false, // shows when the device was last seen e.g. "Device Name - last seen 5 minutes ago"
 		keepAlive: 180, // how long (in seconds) a device should be considered 'alive' since it was last found on the network
 		updateInterval: 20, // how often (in seconds) the module should scan the network
-		sort: true, // sort the devices in the mirror
 
 		residents: [],
 		occupiedCMD: null, // {notification: 'TEST', payload: {action: 'occupiedCMD'}},
@@ -27,8 +25,6 @@ Module.register("MMM-NetworkScanner", {
 		coloredSymbolOnly: false, // show symbol only in color //
 		showLastSeenWhenOffline: false, // show last seen only when offline //
 
-		debug: false,
-
 		// sjj: show table as device rows or as device columns
 		showDeviceColumns: false,
 		coloredState: false
@@ -37,7 +33,6 @@ Module.register("MMM-NetworkScanner", {
 	// Subclass start method.
 	start: function () {
 		Log.info("Starting module: " + this.name);
-		if (this.config.debug) Log.info(this.name + " config: ", this.config);
 
 		// variable for if anyone is home
 		this.occupied = true;
@@ -63,8 +58,6 @@ Module.register("MMM-NetworkScanner", {
 
 	// Subclass socketNotificationReceived method.
 	socketNotificationReceived: function (notification, payload) {
-		if (this.config.debug) Log.info(this.name + " received a notification: " + notification, payload);
-
 		var self = this;
 		var getKeyedObject = (objects = [], key) => objects.reduce(
 			(acc, object) => (Object.assign(acc, {
@@ -73,7 +66,6 @@ Module.register("MMM-NetworkScanner", {
 		);
 
 		if (notification === "IP_ADDRESS") {
-			if (this.config.debug) Log.info(this.name + " IP_ADDRESS device: ", [payload.name, payload.online]);
 			if (Object.hasOwn(payload, "ipAddress")) {
 				var device = this.config.devices.find((d) => d.ipAddress === payload.ipAddress);
 				this.updateDeviceStatus(device, payload.online);
@@ -81,8 +73,6 @@ Module.register("MMM-NetworkScanner", {
 		}
 
 		if (notification === "MAC_ADDRESSES") {
-			if (this.config.debug) Log.info(this.name + " MAC_ADDRESSES payload: ", payload);
-
 			var nextState = payload.map((device) =>
 				Object.assign(device, {
 					lastSeen: moment()
@@ -115,17 +105,6 @@ Module.register("MMM-NetworkScanner", {
 
 			this.networkDevices = nextState;
 
-			// Sort list by known device names, then unknown device mac addresses
-			if (this.config.sort) {
-				this.networkDevices.sort(function (a, b) {
-					var stringA, stringB;
-					stringA = (a.type != "Unknown" ? "_" + a.name + a.macAddress : a.name);
-					stringB = (b.type != "Unknown" ? "_" + b.name + b.macAddress : b.name);
-
-					return stringA.localeCompare(stringB);
-				});
-			}
-
 			// Send notification if user status has changed
 			if (this.config.residents.length > 0) {
 				var anyoneHome;
@@ -138,12 +117,8 @@ Module.register("MMM-NetworkScanner", {
 					}
 				});
 
-				if (this.config.debug) Log.info("# people home: ", anyoneHome);
-				if (this.config.debug) Log.info("Was occupied? ", this.occupied);
-
 				if (anyoneHome > 0) {
 					if (this.occupied === false) {
-						if (this.config.debug) Log.info("Someone has come home");
 						if (this.config.occupiedCMD) {
 							var occupiedCMD = self.config.occupiedCMD;
 							this.sendNotification(occupiedCMD.notification, occupiedCMD.payload);
@@ -152,7 +127,6 @@ Module.register("MMM-NetworkScanner", {
 					}
 				} else {
 					if (this.occupied === true) {
-						if (this.config.debug) Log.info("Everyone has left home");
 						if (this.config.vacantCMD) {
 							var vacantCMD = this.config.vacantCMD;
 							this.sendNotification(vacantCMD.notification, vacantCMD.payload);
@@ -273,8 +247,6 @@ Module.register("MMM-NetworkScanner", {
 				if (!self.config.showDeviceColumns) {
 					deviceTable.appendChild(deviceRow);
 				}
-			} else {
-				if (this.config.debug) Log.info(self.name + " Online, but ignoring: '" + device + "'");
 			}
 		});
 
@@ -330,7 +302,6 @@ Module.register("MMM-NetworkScanner", {
 	},
 
 	scanNetwork: function () {
-		if (this.config.debug) Log.info(this.name + " is initiating network scan");
 		var self = this;
 		this.sendSocketNotification("SCAN_NETWORK");
 		setInterval(function () {
@@ -341,7 +312,6 @@ Module.register("MMM-NetworkScanner", {
 
 	updateDeviceStatus: function (device, online) {
 		if (device) {
-			if (this.config.debug) Log.info(this.name + " is updating device status.", [device.name, online]);
 			// Last Seen
 			if (online) {
 				device.lastSeen = moment();
@@ -352,7 +322,6 @@ Module.register("MMM-NetworkScanner", {
 				: null;
 			var isStale = (sinceLastSeen >= this.config.keepAlive);
 			device.online = (sinceLastSeen != null) && (!isStale);
-			if (this.config.debug) Log.info(this.name + " " + device.name + " is " + (online ? "online" : "offline"));
 		}
 		return;
 	}
