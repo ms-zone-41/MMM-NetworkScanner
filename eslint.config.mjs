@@ -1,6 +1,7 @@
 import { defineConfig } from "eslint/config";
 import globals from "globals";
 import js from "@eslint/js";
+import { configs as packageJsonConfigs } from "eslint-plugin-package-json";
 import stylistic from "@stylistic/eslint-plugin";
 
 export default defineConfig([
@@ -29,6 +30,17 @@ export default defineConfig([
 		languageOptions: {
 			sourceType: "commonjs",
 			globals: globals.node
+		}
+	},
+	packageJsonConfigs.recommended,
+	{
+		// MagicMirror loads the module from its directory; it is not published
+		// as an npm package
+		files: ["package.json"],
+		rules: {
+			"package-json/require-exports": "off",
+			"package-json/require-files": "off",
+			"package-json/require-sideEffects": "off"
 		}
 	}
 ]);

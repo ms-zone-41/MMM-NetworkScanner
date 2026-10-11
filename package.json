@@ -1,31 +1,36 @@
 {
-  "name": "MMM-NetworkScanner",
+  "name": "mmm-networkscanner",
   "version": "0.0.5",
-  "description": "A module for MagicMirror which determines the status of devices on the network based on their MAC address",
-  "main": "MMM-NetworkScanner.js",
-  "scripts": {
-    "lint": "eslint",
-    "test": "node --test"
-  },
+  "description": "A MagicMirror² module that shows which devices are on your network, e.g. whose phone is at home.",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ianperrin/MMM-NetworkScanner.git"
+    "url": "git+https://github.com/ms-zone-41/MMM-NetworkScanner.git"
   },
   "keywords": [
-    "MagicMirror",
-    "Network",
-    "Scanner"
+    "magicmirror",
+    "magicmirror2",
+    "network",
+    "presence",
+    "phone",
+    "arp-scan",
+    "ping"
   ],
   "author": "Ian Perrin",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/ianperrin/MMM-NetworkScanner/issues"
+    "url": "https://github.com/ms-zone-41/MMM-NetworkScanner/issues"
   },
-  "homepage": "https://github.com/ianperrin/MMM-NetworkScanner#readme",
+  "homepage": "https://github.com/ms-zone-41/MMM-NetworkScanner#readme",
+  "type": "commonjs",
+  "scripts": {
+    "lint": "eslint",
+    "test": "node --test"
+  },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@stylistic/eslint-plugin": "^5.10.0",
     "eslint": "^10.12.0",
+    "eslint-plugin-package-json": "^1.10.1",
     "globals": "^17.13.0",
     "jsdom": "^30.1.1"
   }
