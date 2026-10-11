@@ -136,10 +136,17 @@ test("finds a device if arp-scan adds another source MAC address in brackets", a
 	assert.deepEqual(lastDevices(notifications).map((device) => device.online), [true, false, false]);
 });
 
-test("scans the configured network", async () => {
-	const { commands } = createHelper({ config: { network: "192.168.178.0/24" } });
-	await settle();
-	assert.deepEqual(runs(commands, "/usr/sbin/arp-scan"), [["--quiet", "--plain", "192.168.178.0/24"]]);
+test("scans the configured network with the configured interface", async () => {
+	const options = [
+		[{ network: "192.168.178.0/24" }, ["--quiet", "--plain", "192.168.178.0/24"]],
+		[{ interface: "wlan0" }, ["--quiet", "--plain", "--interface=wlan0", "--localnet"]],
+		[{ interface: "eth0.2", network: "10.0.0.0/24" }, ["--quiet", "--plain", "--interface=eth0.2", "10.0.0.0/24"]]
+	];
+	for (const [config, args] of options) {
+		const { commands } = createHelper({ config });
+		await settle();
+		assert.deepEqual(runs(commands, "/usr/sbin/arp-scan"), [args]);
+	}
 });
 
 test("pings the devices with an IP address or host name, and runs arp-scan only for MAC addresses", async () => {
@@ -341,8 +348,13 @@ test("does not scan with an option that is not valid", async () => {
 		// Nothing that ping or arp-scan would take as an option
 		[{ devices: [{ ipAddress: "-c" }] }, "devices"],
 		[{ network: "-l" }, "network"],
+		[{ interface: "-eth0" }, "interface"],
 		// An IPv4 address or network in CIDR notation
 		[{ network: "192.168.178.0/24 --interface=eth0" }, "network"],
+		// One interface name
+		[{ interface: "eth0 wlan0" }, "interface"],
+		[{ interface: "" }, "interface"],
+		[{ interface: ["eth0"] }, "interface"],
 		// Seconds, more than 0, and not milliseconds
 		[{ updateInterval: 0 }, "updateInterval"],
 		[{ updateInterval: "60" }, "updateInterval"],
@@ -377,6 +389,8 @@ test("accepts valid options", async () => {
 		{ devices: [{ macAddress: "AA:BB:CC:DD:EE:01" }, { ipAddress: "nas.fritz.box" }, { ipAddress: "192.168.178.10" }] },
 		{ network: "192.168.178.0/24" },
 		{ network: "192.168.178.10" },
+		{ interface: "wlan0" },
+		{ interface: "enp0s31f6" },
 		{ updateInterval: 30, keepAlive: 0.5 },
 		{ updateInterval: 3600, keepAlive: 86400 }
 	];

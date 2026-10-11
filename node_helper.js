@@ -15,6 +15,7 @@ const Log = require("logger");
 const DEFAULTS = {
 	devices: [],
 	network: undefined,
+	interface: undefined,
 	updateInterval: 60,
 	keepAlive: 300
 };
@@ -29,6 +30,7 @@ const HOST = /^[A-Za-z\d.][A-Za-z\d.-]*$/;
 // An IPv4 address or network in CIDR notation, e.g. 192.168.178.0/24.
 // arp-scan reports numbers out of range itself.
 const NETWORK = /^\d{1,3}(\.\d{1,3}){3}(\/\d{1,2})?$/;
+const INTERFACE = /^[A-Za-z0-9][\w.:-]*$/;
 
 // What the log says about the problems of a scan, before their detail
 const PROBLEMS = {
@@ -130,7 +132,7 @@ module.exports = NodeHelper.create({
 	async findAddresses() {
 		const hosts = this.devices.filter((device) => device.ipAddress).map((device) => device.ipAddress);
 		const results = await Promise.allSettled([
-			this.devices.some((device) => device.macAddress) ? arpScan(this.config.network) : [],
+			this.devices.some((device) => device.macAddress) ? arpScan(this.config) : [],
 			...hosts.map((host) => ping(host))
 		]);
 		const failed = results.find((result) => result.status === "rejected");
@@ -154,6 +156,9 @@ function findInvalidOption(config) {
 	}
 	if (config.network !== undefined && !matches(config.network, NETWORK)) {
 		return { option: "network", value: config.network };
+	}
+	if (config.interface !== undefined && !matches(config.interface, INTERFACE)) {
+		return { option: "interface", value: config.interface };
 	}
 	// In seconds, at most an hour or a day: a larger value is likely in
 	// milliseconds, as the default modules of MagicMirror² count
@@ -180,9 +185,10 @@ function matches(value, pattern) {
 // Resolves with the MAC addresses that answered arp-scan. Rejects with the
 // problem and its detail: arp-scan exits with 1 for every error, so its error
 // output tells them apart.
-function arpScan(network) {
+function arpScan({ network, interface: name }) {
+	const args = ["--quiet", "--plain", ...(name ? [`--interface=${name}`] : []), network ?? "--localnet"];
 	return new Promise((resolve, reject) => {
-		execFile(ARP_SCAN, ["--quiet", "--plain", network ?? "--localnet"], { timeout: 30000 }, (error, stdout, stderr) => {
+		execFile(ARP_SCAN, args, { timeout: 30000 }, (error, stdout, stderr) => {
 			if (!error) {
 				// One line for each host that answered: IP<TAB>MAC, followed by the
 				// source MAC address of the frame in brackets if it differs
