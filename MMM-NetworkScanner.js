@@ -33,8 +33,9 @@ Module.register("MMM-NetworkScanner", {
 	start() {
 		Log.info(`Starting module: ${this.name}`);
 
-		// The devices from the node helper
+		// The devices from the node helper, and the problem of the last scan
 		this.devices = null;
+		this.error = null;
 		// Whether a resident is at home, unknown until the first devices arrive
 		this.anyoneHome = null;
 
@@ -51,6 +52,13 @@ Module.register("MMM-NetworkScanner", {
 		return ["moment.js"];
 	},
 
+	getTranslations() {
+		return {
+			en: "translations/en.json",
+			de: "translations/de.json"
+		};
+	},
+
 	// Ask for the devices once all modules have started: MagicMirror² does not
 	// deliver the notifications that a module sends before, e.g. occupiedCMD
 	notificationReceived(notification) {
@@ -63,8 +71,11 @@ Module.register("MMM-NetworkScanner", {
 	socketNotificationReceived(notification, payload) {
 		if (notification === "DEVICES") {
 			this.devices = payload.devices;
+			this.error = payload.error;
 			this.validateDevices();
-			if (this.config.residents.length > 0) {
+			// While the scan fails, the devices show the last scan that worked,
+			// which does not tell who came or left since
+			if (!this.error && this.config.residents.length > 0) {
 				this.updateResidents();
 			}
 			this.updateDom();
@@ -97,9 +108,16 @@ Module.register("MMM-NetworkScanner", {
 			return wrapper;
 		}
 
+		if (this.error) {
+			wrapper.appendChild(this.getWarning());
+		}
+
 		// Display device status
 		var deviceTable = document.createElement("table");
 		deviceTable.classList.add("deviceTable", "small");
+		if (this.error) {
+			deviceTable.classList.add("ns-stale");
+		}
 
 		// sjj: Show devices in columns
 		// generate header row and device state row
@@ -201,12 +219,29 @@ Module.register("MMM-NetworkScanner", {
 
 		if (deviceTable.hasChildNodes()) {
 			wrapper.appendChild(deviceTable);
-		} else {
+		} else if (!this.error) {
 			// Display no devices online message
-			wrapper.innerHTML = this.translate("NO DEVICES ONLINE");
+			wrapper.innerHTML = this.translate("NO_DEVICES_ONLINE");
 		}
 
 		return wrapper;
+	},
+
+	// The problem of the last scan, and below it its detail from the node
+	// helper: the command that solves it, what went wrong, or the value that is
+	// not valid
+	getWarning() {
+		const warning = document.createElement("div");
+		warning.className = "ns-warning";
+		const icon = document.createElement("i");
+		icon.className = "fa-solid fa-triangle-exclamation";
+		warning.append(icon, this.translate(this.error.code, this.error));
+		if (this.error.detail) {
+			const detail = document.createElement("code");
+			detail.textContent = this.error.detail;
+			warning.append(detail);
+		}
+		return warning;
 	},
 
 	// Add the defaults of the keys that only the display uses

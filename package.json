@@ -22,10 +22,6 @@
     "url": "https://github.com/ianperrin/MMM-NetworkScanner/issues"
   },
   "homepage": "https://github.com/ianperrin/MMM-NetworkScanner#readme",
-  "dependencies": {
-    "sudo": "^1.0.3",
-    "ping": "^0.1.10"
-  },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@stylistic/eslint-plugin": "^5.10.0",

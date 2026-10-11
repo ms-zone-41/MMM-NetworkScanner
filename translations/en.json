@@ -1,0 +1,6 @@
+{
+	"NO_DEVICES_ONLINE": "No devices online",
+	"ARP_SCAN_NOT_FOUND": "arp-scan is not installed",
+	"ARP_SCAN_NO_PERMISSION": "arp-scan is not allowed to scan the network",
+	"SCAN_FAILED": "The network scan failed"
+}

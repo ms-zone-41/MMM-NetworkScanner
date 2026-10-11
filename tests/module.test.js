@@ -6,6 +6,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const { JSDOM } = require("jsdom");
+const translations = require("../translations/en.json");
 
 // Load the module like MagicMirror² does, with document and config as globals
 const document = new JSDOM("<!doctype html><html><body></body></html>").window.document;
@@ -37,7 +38,10 @@ function createModule(config = {}) {
 		config: { ...definition.defaults, ...config },
 		socketNotifications: [],
 		notifications: [],
-		translate: (key) => key,
+		// Like MagicMirror², fill in variables such as {detail}
+		translate(key, variables = {}) {
+			return (translations[key] ?? key).replace(/{([^{}]+)}/g, (placeholder, name) => (name in variables ? variables[name] : placeholder));
+		},
 		sendSocketNotification(notification, payload) {
 			this.socketNotifications.push({ notification, payload });
 		},
@@ -51,8 +55,18 @@ function createModule(config = {}) {
 }
 
 // Send the devices from the node helper to the module, as JSON like socket.io
-function receive(module, devices) {
-	module.socketNotificationReceived("DEVICES", JSON.parse(JSON.stringify({ devices })));
+function receive(module, devices, error = null) {
+	module.socketNotificationReceived("DEVICES", JSON.parse(JSON.stringify({ devices, error })));
+}
+
+// The warning about a problem of the scan: its text, and the detail below it,
+// e.g. the command that solves the problem
+function warning(module) {
+	const element = module.getDom().querySelector(".ns-warning");
+	return element && {
+		text: Array.from(element.childNodes).filter((node) => node.nodeType === node.TEXT_NODE).map((node) => node.textContent).join(""),
+		detail: element.querySelector("code")?.textContent
+	};
 }
 
 // The names of the devices that the module shows
@@ -87,10 +101,35 @@ test("shows the devices that are offline dimmed", () => {
 	assert.ok(rows[1].classList.contains("dimmed"));
 });
 
-test("hides the devices that are offline with showOffline false", () => {
+test("hides the devices that are offline with showOffline false, and shows when none is online", () => {
 	const module = createModule({ showOffline: false });
 	receive(module, [ANNA, BEN]);
 	assert.deepEqual(names(module), ["Anna"]);
+	receive(module, [{ ...ANNA, online: false }, BEN]);
+	assert.equal(module.getDom().textContent, "No devices online");
+});
+
+test("shows a problem of the scan, and below it the command that solves it or what went wrong", () => {
+	const problems = [
+		[{ code: "ARP_SCAN_NOT_FOUND", detail: "sudo apt install arp-scan" }, "arp-scan is not installed"],
+		[{ code: "ARP_SCAN_NO_PERMISSION", detail: "sudo setcap cap_net_raw+ep /usr/sbin/arp-scan" }, "arp-scan is not allowed to scan the network"],
+		[{ code: "SCAN_FAILED", detail: "ERROR: Could not obtain interface IP address and netmask" }, "The network scan failed"]
+	];
+	for (const [error, text] of problems) {
+		const module = createModule();
+		receive(module, [ANNA, BEN], error);
+		assert.deepEqual(warning(module), { text, detail: error.detail });
+	}
+});
+
+test("dims the devices while the scan fails, and shows them as before when it works again", () => {
+	const module = createModule();
+	receive(module, [ANNA, BEN], { code: "ARP_SCAN_NOT_FOUND" });
+	assert.ok(module.getDom().querySelector("table").classList.contains("ns-stale"));
+	assert.deepEqual(names(module), ["Anna", "Ben"]);
+	receive(module, [ANNA, BEN]);
+	assert.equal(warning(module), null);
+	assert.ok(!module.getDom().querySelector("table").classList.contains("ns-stale"));
 });
 
 test("sends occupiedCMD when the first resident comes home and vacantCMD when the last one leaves", () => {
@@ -119,4 +158,13 @@ test("sends no notifications without residents", () => {
 	const module = createModule({ occupiedCMD: { notification: "OCCUPIED" }, vacantCMD: { notification: "VACANT" } });
 	receive(module, [ANNA, BEN]);
 	assert.deepEqual(module.notifications, []);
+});
+
+test("sends no residents notifications while the scan fails", () => {
+	const module = createModule({ residents: ["Anna"], occupiedCMD: { notification: "OCCUPIED" }, vacantCMD: { notification: "VACANT" } });
+	receive(module, [BEN], { code: "ARP_SCAN_NOT_FOUND" });
+	assert.deepEqual(module.notifications, []);
+	receive(module, [ANNA, BEN]);
+	receive(module, [{ ...ANNA, online: false }, BEN], { code: "SCAN_FAILED", detail: "timeout" });
+	assert.deepEqual(sent(module), ["OCCUPIED"]);
 });
