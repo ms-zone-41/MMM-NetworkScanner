@@ -1,11 +1,16 @@
 import { defineConfig } from "eslint/config";
 import globals from "globals";
 import js from "@eslint/js";
+import stylistic from "@stylistic/eslint-plugin";
 
 export default defineConfig([
 	{
 		files: ["**/*.js", "**/*.mjs"],
-		extends: [js.configs.recommended]
+		extends: [
+			js.configs.recommended,
+			// The code style of MagicMirror
+			stylistic.configs.customize({ indent: "tab", quotes: "double", semi: true, commaDangle: "never", braceStyle: "1tbs", arrowParens: true })
+		]
 	},
 	{
 		// Runs in the browser of the mirror, with the globals of MagicMirror

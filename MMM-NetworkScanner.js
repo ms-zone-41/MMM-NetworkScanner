@@ -1,5 +1,5 @@
 /* global moment */
-/* Magic Mirror
+/* MagicMirror²
  * Module: MMM-NetworkScanner
  *
  * By Ian Perrin http://ianperrin.com
@@ -12,7 +12,7 @@ Module.register("MMM-NetworkScanner", {
 	defaults: {
 		devices: [], // an array of device objects e.g. { macAddress: "aa:bb:cc:11:22:33", name: "DEVICE-NAME", icon: "FONT-AWESOME-ICON"}
 		network: "-l", // a Local Network IP mask to limit the mac address scan, i.e. `192.168.0.0/24`. Use `-l` for the entire localnet
-		showUnknown: true, // shows devices found on the network even if not specified in the 'devices' option 
+		showUnknown: true, // shows devices found on the network even if not specified in the 'devices' option
 		showOffline: true, // shows devices specified in the 'devices' option even when offline
 		showLastSeen: false, // shows when the device was last seen e.g. "Device Name - last seen 5 minutes ago"
 		keepAlive: 180, // how long (in seconds) a device should be considered 'alive' since it was last found on the network
@@ -28,14 +28,14 @@ Module.register("MMM-NetworkScanner", {
 		showLastSeenWhenOffline: false, // show last seen only when offline //
 
 		debug: false,
-		
+
 		// sjj: show table as device rows or as device columns
 		showDeviceColumns: false,
-		coloredState: false,
+		coloredState: false
 	},
 
 	// Subclass start method.
-	start: function() {
+	start: function () {
 		Log.info("Starting module: " + this.name);
 		if (this.config.debug) Log.info(this.name + " config: ", this.config);
 
@@ -46,23 +46,23 @@ Module.register("MMM-NetworkScanner", {
 
 		this.validateDevices();
 
-		this.sendSocketNotification('CONFIG', this.config);
+		this.sendSocketNotification("CONFIG", this.config);
 
 		this.scanNetwork();
 	},
 
 	// Subclass getStyles method.
-	getStyles: function() {
-		return ['MMM-NetworkScanner.css', 'font-awesome.css'];
+	getStyles: function () {
+		return ["MMM-NetworkScanner.css", "font-awesome.css"];
 	},
 
 	// Subclass getScripts method.
-	getScripts: function() {
+	getScripts: function () {
 		return ["moment.js"];
 	},
 
 	// Subclass socketNotificationReceived method.
-	socketNotificationReceived: function(notification, payload) {
+	socketNotificationReceived: function (notification, payload) {
 		if (this.config.debug) Log.info(this.name + " received a notification: " + notification, payload);
 
 		var self = this;
@@ -72,36 +72,36 @@ Module.register("MMM-NetworkScanner", {
 			})), {}
 		);
 
-		if (notification === 'IP_ADDRESS') {
+		if (notification === "IP_ADDRESS") {
 			if (this.config.debug) Log.info(this.name + " IP_ADDRESS device: ", [payload.name, payload.online]);
 			if (Object.hasOwn(payload, "ipAddress")) {
-				var device = this.config.devices.find(d => d.ipAddress === payload.ipAddress);
+				var device = this.config.devices.find((d) => d.ipAddress === payload.ipAddress);
 				this.updateDeviceStatus(device, payload.online);
 			}
 		}
 
-		if (notification === 'MAC_ADDRESSES') {
+		if (notification === "MAC_ADDRESSES") {
 			if (this.config.debug) Log.info(this.name + " MAC_ADDRESSES payload: ", payload);
 
-			var nextState = payload.map(device =>
+			var nextState = payload.map((device) =>
 				Object.assign(device, {
 					lastSeen: moment()
 				})
 			);
 
 			if (this.config.showOffline) {
-				var networkDevicesByMac = getKeyedObject(this.networkDevices, 'macAddress');
-				var payloadDevicesByMac = getKeyedObject(nextState, 'macAddress');
+				var networkDevicesByMac = getKeyedObject(this.networkDevices, "macAddress");
+				var payloadDevicesByMac = getKeyedObject(nextState, "macAddress");
 
-				nextState = this.config.devices.map(device => {
+				nextState = this.config.devices.map((device) => {
 					if (device.macAddress) {
 						var oldDeviceState = networkDevicesByMac[device.macAddress];
 						var payloadDeviceState = payloadDevicesByMac[device.macAddress];
 						var newDeviceState = payloadDeviceState || oldDeviceState || device;
 
-						var sinceLastSeen = newDeviceState.lastSeen ?
-							moment().diff(newDeviceState.lastSeen, 'seconds') :
-							null;
+						var sinceLastSeen = newDeviceState.lastSeen
+							? moment().diff(newDeviceState.lastSeen, "seconds")
+							: null;
 						var isStale = (sinceLastSeen >= this.config.keepAlive);
 
 						newDeviceState.online = (sinceLastSeen != null) && (!isStale);
@@ -117,7 +117,7 @@ Module.register("MMM-NetworkScanner", {
 
 			// Sort list by known device names, then unknown device mac addresses
 			if (this.config.sort) {
-				this.networkDevices.sort(function(a, b) {
+				this.networkDevices.sort(function (a, b) {
 					var stringA, stringB;
 					stringA = (a.type != "Unknown" ? "_" + a.name + a.macAddress : a.name);
 					stringB = (b.type != "Unknown" ? "_" + b.name + b.macAddress : b.name);
@@ -132,7 +132,7 @@ Module.register("MMM-NetworkScanner", {
 				//                self = this;
 				anyoneHome = 0;
 
-				this.networkDevices.forEach(function(device) {
+				this.networkDevices.forEach(function (device) {
 					if (self.config.residents.indexOf(device.name) >= 0) {
 						anyoneHome = anyoneHome + device.online;
 					}
@@ -164,13 +164,11 @@ Module.register("MMM-NetworkScanner", {
 
 			this.updateDom();
 			return;
-
 		}
-
 	},
 
 	// Override dom generator.
-	getDom: function() {
+	getDom: function () {
 		var self = this;
 
 		var wrapper = document.createElement("div");
@@ -185,19 +183,17 @@ Module.register("MMM-NetworkScanner", {
 		// Display device status
 		var deviceTable = document.createElement("table");
 		deviceTable.classList.add("deviceTable", "small");
-		
+
 		// sjj: Show devices in columns
 		// generate header row and device state row
-		
+
 		var headerRow = document.createElement("tr");
 		headerRow.classList.add("headerRow", "dimmed");
 		var devStateRow = document.createElement("tr");
 		devStateRow.classList.add("devStateRow", "dimmed");
-		
-		this.networkDevices.forEach(function(device) {
-			
-			if (device && (device.online || device.showOffline)) {
 
+		this.networkDevices.forEach(function (device) {
+			if (device && (device.online || device.showOffline)) {
 				// device row
 				var deviceRow = document.createElement("tr");
 				var deviceOnline = (device.online ? "bright" : "dimmed");
@@ -224,11 +220,11 @@ Module.register("MMM-NetworkScanner", {
 				deviceRow.appendChild(deviceCell);
 
 				// When last seen
-				if ((self.config.showLastSeen && device.lastSeen  && !self.config.showLastSeenWhenOffline) || 
-					(self.config.showLastSeen && !device.lastSeen &&  self.config.showLastSeenWhenOffline)) {
+				if ((self.config.showLastSeen && device.lastSeen && !self.config.showLastSeenWhenOffline)
+					|| (self.config.showLastSeen && !device.lastSeen && self.config.showLastSeenWhenOffline)) {
 					var dateCell = document.createElement("td");
 					dateCell.classList.add("dateCell", "dimmed", "light");
-					if (typeof device.lastSeen !== 'undefined') {
+					if (typeof device.lastSeen !== "undefined") {
 						dateCell.innerHTML = device.lastSeen.fromNow();
 					}
 					deviceRow.appendChild(dateCell);
@@ -241,7 +237,7 @@ Module.register("MMM-NetworkScanner", {
 					deviceTable.appendChild(headerRow);
 					deviceTable.appendChild(devStateRow);
 
-					//generate new line contents
+					// generate new line contents
 					headerRow = document.createElement("tr");
 					headerRow.classList.add("headerRow", "dimmed");
 					devStateRow = document.createElement("tr");
@@ -255,11 +251,11 @@ Module.register("MMM-NetworkScanner", {
 				headerDevCell.innerHTML += device.name;
 
 				headerRow.appendChild(headerDevCell);
-				
+
 				// device state row
 				var devStateCell = document.createElement("td");
 				devStateCell.classList.add("devStateCell");
-				
+
 				// color online / offline
 				if (self.config.coloredState) {
 					if (device.online) {
@@ -268,22 +264,21 @@ Module.register("MMM-NetworkScanner", {
 						icon.style.cssText = "color: " + device.colorStateOffline;
 					};
 				}
-				
+
 				devStateCell.appendChild(icon);
 
 				devStateRow.appendChild(devStateCell);
 
-				// sjj: show as Device rows or as Device columns 
+				// sjj: show as Device rows or as Device columns
 				if (!self.config.showDeviceColumns) {
 					deviceTable.appendChild(deviceRow);
 				}
-
 			} else {
 				if (this.config.debug) Log.info(self.name + " Online, but ignoring: '" + device + "'");
 			}
 		});
-		
-		// sjj: show as Device rows or as Device columns 
+
+		// sjj: show as Device rows or as Device columns
 		if (self.config.showDeviceColumns) {
 			deviceTable.appendChild(headerRow);
 			deviceTable.appendChild(devStateRow);
@@ -299,8 +294,8 @@ Module.register("MMM-NetworkScanner", {
 		return wrapper;
 	},
 
-	validateDevices: function() {
-		this.config.devices.forEach(function(device) {
+	validateDevices: function () {
+		this.config.devices.forEach(function (device) {
 			// Add missing device attributes.
 			if (!Object.hasOwn(device, "icon")) {
 				device.icon = "question";
@@ -334,17 +329,17 @@ Module.register("MMM-NetworkScanner", {
 		});
 	},
 
-	scanNetwork: function() {
+	scanNetwork: function () {
 		if (this.config.debug) Log.info(this.name + " is initiating network scan");
 		var self = this;
-		this.sendSocketNotification('SCAN_NETWORK');
-		setInterval(function() {
-			self.sendSocketNotification('SCAN_NETWORK');
+		this.sendSocketNotification("SCAN_NETWORK");
+		setInterval(function () {
+			self.sendSocketNotification("SCAN_NETWORK");
 		}, this.config.updateInterval * 1000);
 		return;
 	},
 
-	updateDeviceStatus: function(device, online) {
+	updateDeviceStatus: function (device, online) {
 		if (device) {
 			if (this.config.debug) Log.info(this.name + " is updating device status.", [device.name, online]);
 			// Last Seen
@@ -352,9 +347,9 @@ Module.register("MMM-NetworkScanner", {
 				device.lastSeen = moment();
 			}
 			// Keep alive?
-			var sinceLastSeen = device.lastSeen ?
-				moment().diff(device.lastSeen, 'seconds') :
-				null;
+			var sinceLastSeen = device.lastSeen
+				? moment().diff(device.lastSeen, "seconds")
+				: null;
 			var isStale = (sinceLastSeen >= this.config.keepAlive);
 			device.online = (sinceLastSeen != null) && (!isStale);
 			if (this.config.debug) Log.info(this.name + " " + device.name + " is " + (online ? "online" : "offline"));
