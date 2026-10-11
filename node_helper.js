@@ -6,6 +6,8 @@
  */
 
 const { execFile } = require("node:child_process");
+const fs = require("node:fs");
+const path = require("node:path");
 const NodeHelper = require("node_helper");
 const Log = require("logger");
 
@@ -65,6 +67,13 @@ module.exports = NodeHelper.create({
 			online: false,
 			lastSeen: null
 		}));
+		// The times the devices last answered before MagicMirror² stopped
+		this.file = path.join(this.path, "last-seen.json");
+		const lastSeen = this.loadLastSeen();
+		for (const device of this.devices) {
+			device.lastSeen = lastSeen.get(addressOf(device)) ?? null;
+		}
+		this.updateOnline(Date.now());
 		this.scan();
 	},
 
@@ -88,18 +97,17 @@ module.exports = NodeHelper.create({
 			const found = await this.findAddresses();
 			const now = Date.now();
 			for (const device of this.devices) {
-				if (found.has(device.macAddress ?? device.ipAddress)) {
+				if (found.has(addressOf(device))) {
 					device.lastSeen = now;
 				}
-				// Sleeping phones skip answers, so a device counts as online for
-				// keepAlive seconds after it last answered
-				device.online = device.lastSeen !== null && now - device.lastSeen < this.config.keepAlive * 1000;
 			}
+			this.updateOnline(now);
 			Log.debug(`These addresses answered: ${[...found].join(", ") || "none"}`);
 			if (this.error) {
 				Log.info("The network scan works again");
 			}
 			this.error = null;
+			this.saveLastSeen();
 		} catch (error) {
 			// Keep the devices as they are: a failed scan does not tell who left.
 			// execFile() throws some errors of a command that cannot start, e.g.
@@ -120,6 +128,14 @@ module.exports = NodeHelper.create({
 		};
 		this.sendSocketNotification("DEVICES", this.state);
 		this.timer = setTimeout(() => this.scan(), this.config.updateInterval * 1000);
+	},
+
+	// Sleeping phones skip answers, so a device counts as online for keepAlive
+	// seconds after it last answered
+	updateOnline(now) {
+		for (const device of this.devices) {
+			device.online = device.lastSeen !== null && now - device.lastSeen < this.config.keepAlive * 1000;
+		}
 	},
 
 	// Log a problem when it starts or changes, not after every scan
@@ -147,8 +163,43 @@ module.exports = NodeHelper.create({
 		}
 		const [macAddresses, ...answers] = results.map((result) => result.value);
 		return new Set([...macAddresses, ...hosts.filter((host, index) => answers[index])]);
+	},
+
+	// The times the devices last answered, by their address, in milliseconds
+	// since 1970, as the last scan saved them
+	loadLastSeen() {
+		try {
+			return new Map(Object.entries(JSON.parse(fs.readFileSync(this.file, "utf8"))));
+		} catch (error) {
+			// Before the first scan that works, there is no file
+			if (error.code !== "ENOENT") {
+				Log.warn(`Could not read last-seen.json: ${error.message}`);
+			}
+			return new Map();
+		}
+	},
+
+	// Save the times the devices last answered after each scan that works, so
+	// that they are not lost when MagicMirror² restarts, even after a power cut
+	saveLastSeen() {
+		const lastSeen = Object.fromEntries(this.devices.filter((device) => device.lastSeen !== null).map((device) => [addressOf(device), device.lastSeen]));
+		try {
+			fs.writeFileSync(this.file, JSON.stringify(lastSeen));
+			this.saveFailed = false;
+		} catch (error) {
+			// Warn once, not after every scan
+			if (!this.saveFailed) {
+				Log.warn(`Could not save last-seen.json: ${error.message}`);
+			}
+			this.saveFailed = true;
+		}
 	}
 });
+
+// The address of a device in the answers of a scan and in last-seen.json
+function addressOf(device) {
+	return device.macAddress ?? device.ipAddress;
+}
 
 // The first option that is not valid, if any, with its value, or for devices
 // the first device that is not valid
