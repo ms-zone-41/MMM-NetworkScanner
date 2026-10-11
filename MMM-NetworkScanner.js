@@ -1,12 +1,10 @@
-/* global Log, Module, moment, config */
+/* global moment */
 /* Magic Mirror
  * Module: MMM-NetworkScanner
  *
  * By Ian Perrin http://ianperrin.com
  * MIT Licensed.
  */
-
-//var Module, Log, moment, config, Log, moment, document;
 
 Module.register("MMM-NetworkScanner", {
 
@@ -76,7 +74,7 @@ Module.register("MMM-NetworkScanner", {
 
 		if (notification === 'IP_ADDRESS') {
 			if (this.config.debug) Log.info(this.name + " IP_ADDRESS device: ", [payload.name, payload.online]);
-			if (payload.hasOwnProperty("ipAddress")) {
+			if (Object.hasOwn(payload, "ipAddress")) {
 				var device = this.config.devices.find(d => d.ipAddress === payload.ipAddress);
 				this.updateDeviceStatus(device, payload.online);
 			}
@@ -130,7 +128,7 @@ Module.register("MMM-NetworkScanner", {
 
 			// Send notification if user status has changed
 			if (this.config.residents.length > 0) {
-				var anyoneHome, command;
+				var anyoneHome;
 				//                self = this;
 				anyoneHome = 0;
 
@@ -304,33 +302,33 @@ Module.register("MMM-NetworkScanner", {
 	validateDevices: function() {
 		this.config.devices.forEach(function(device) {
 			// Add missing device attributes.
-			if (!device.hasOwnProperty("icon")) {
+			if (!Object.hasOwn(device, "icon")) {
 				device.icon = "question";
 			}
-			if (!device.hasOwnProperty("color")) {
+			if (!Object.hasOwn(device, "color")) {
 				device.color = "#ffffff";
 			}
-			if (!device.hasOwnProperty("showOffline")) {
+			if (!Object.hasOwn(device, "showOffline")) {
 				device.showOffline = true;
 			}
-			if (!device.hasOwnProperty("name")) {
-				if (device.hasOwnProperty("macAddress")) {
+			if (!Object.hasOwn(device, "name")) {
+				if (Object.hasOwn(device, "macAddress")) {
 					device.name = device.macAddress;
-				} else if (device.hasOwnProperty("ipAddress")) {
+				} else if (Object.hasOwn(device, "ipAddress")) {
 					device.name = device.ipAddress;
 				} else {
 					device.name = "Unknown";
 				}
 			}
 			// sjj: coloredState
-			if (!device.hasOwnProperty("colorStateOnline")) {
+			if (!Object.hasOwn(device, "colorStateOnline")) {
 				device.colorStateOnline = "#ffffff";
 			}
-			if (!device.hasOwnProperty("colorStateOffline")) {
+			if (!Object.hasOwn(device, "colorStateOffline")) {
 				device.colorStateOffline = "#ffffff";
 			}
 			// sjj show device in a new rox id mode is show in rows
-			if (!device.hasOwnProperty("showInNewRow")) {
+			if (!Object.hasOwn(device, "showInNewRow")) {
 				device.showInNewRow = false;
 			}
 		});

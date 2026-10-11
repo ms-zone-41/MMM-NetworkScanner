@@ -4,7 +4,8 @@
   "description": "A module for MagicMirror which determines the status of devices on the network based on their MAC address",
   "main": "MMM-NetworkScanner.js",
   "scripts": {
-    "test": "grunt test"
+    "lint": "eslint",
+    "test": "node --test"
   },
   "repository": {
     "type": "git",
@@ -26,8 +27,8 @@
     "ping": "^0.1.10"
   },
   "devDependencies": {
-      "grunt": "latest",
-      "grunt-contrib-jshint": "latest",
-      "grunt-contrib-nodeunit": "latest"
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.12.0",
+    "globals": "^17.13.0"
   }
 }

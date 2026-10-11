@@ -1,5 +1,3 @@
-/* global require, module */
-/* jshint esversion: 6 */
 /* Magic Mirror
  * Node Helper: MMM-NetworkScanner
  *
@@ -119,7 +117,7 @@ module.exports = NodeHelper.create({
         // Find first device with matching macAddress
         for (var i = 0; i < this.config.devices.length; i++) {
             var device = this.config.devices[i];
-            if (device.hasOwnProperty("macAddress")) {
+            if (Object.hasOwn(device, "macAddress")) {
                 if (macAddress.toUpperCase() === device.macAddress.toUpperCase()){
                     this.log(this.name + " found device by MAC Address", device);
                     return device;
