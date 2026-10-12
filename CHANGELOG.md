@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.2] - 2026-10-12
+
+### Changed
+
+- A device that is offline and the times since the devices were last seen have the normal text color instead of being dimmed. All devices are dimmed only while the scan fails
+
 ## [2.0.1] - 2026-10-12
 
 ### Changed
