@@ -89,7 +89,7 @@ Each device in `devices` has either a `macAddress` or an `ipAddress`:
 | `icon` | The name of a [Font Awesome](https://fontawesome.com/icons) icon of the free solid style, without `fa-`, e.g. `"mobile-screen"`. No icon by default. |
 | `color` | The color of the icon, as in CSS, e.g. `"orange"` or `"#ff0000"`. By default the color of the name. |
 
-The names have the class `ns-online` or `ns-offline`, so `config/custom.css` can style them, e.g. to show the devices that are offline in red:
+The names have the class `ns-online` or `ns-offline`, and the table has the class `ns-stale` while the scan fails, so `config/custom.css` can style them, e.g. to show the devices that are offline in red:
 
 ```css
 .MMM-NetworkScanner .ns-offline {
@@ -164,7 +164,7 @@ Private Wi-Fi addresses show as "locally administered". To tell which line is wh
 
 ## Troubleshooting
 
-If the module cannot scan, it says why above the devices, and below that the command that solves the problem or what went wrong. The log of MagicMirror² says the same. Until a scan works again, the module shows the devices dimmed, as the last scan that worked found them, and sends no `occupiedCMD` or `vacantCMD`.
+If the module cannot scan, it says why above the devices, and below that the command that solves the problem or what went wrong. The log of MagicMirror² says the same. Until a scan works again, the module shows all devices dimmed, as it cannot tell who is online, and sends no `occupiedCMD` or `vacantCMD`.
 
 | Message | What to do |
 | --- | --- |

@@ -173,14 +173,18 @@ test("shows only the option that is not valid, with its value", () => {
 	assert.equal(module.getDom().textContent, "The option network is not valid\"-l\"");
 });
 
-test("dims the devices while the scan fails, and shows them as before when it works again", () => {
+test("dims all devices while the scan fails, and shows them as before when it works again", () => {
 	const module = createModule();
+	const names = () => Array.from(module.getDom().querySelectorAll(".ns-name"), (cell) => cell.className);
 	receive(module, [ANNA, BEN], { code: "ARP_SCAN_NOT_FOUND" });
 	assert.ok(module.getDom().querySelector("table").classList.contains("ns-stale"));
 	assert.deepEqual(rows(module), [["Anna"], ["Ben"]]);
+	// The last scan that worked does not tell who is online now
+	assert.deepEqual(names(), ["ns-name ns-online dimmed", "ns-name ns-offline dimmed"]);
 	receive(module, [ANNA, BEN]);
 	assert.equal(warning(module), null);
 	assert.ok(!module.getDom().querySelector("table").classList.contains("ns-stale"));
+	assert.deepEqual(names(), ["ns-name ns-online bright", "ns-name ns-offline dimmed"]);
 });
 
 test("sends occupiedCMD when the first resident comes home and vacantCMD when the last one leaves", () => {

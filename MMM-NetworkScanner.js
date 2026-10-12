@@ -107,7 +107,8 @@ Module.register("MMM-NetworkScanner", {
 	// The devices, in rows of the number of columns
 	getTable(devices) {
 		const table = document.createElement("table");
-		// While the scan fails, the devices are those of the last scan that worked
+		// While the scan fails, the devices are those of the last scan that
+		// worked. The class ns-stale lets custom.css style them.
 		if (this.error) {
 			table.className = "ns-stale";
 		}
@@ -126,11 +127,14 @@ Module.register("MMM-NetworkScanner", {
 		return table;
 	},
 
-	// The name of a device, after its icon in its color if it has one. The
-	// classes ns-online and ns-offline let custom.css style the devices.
+	// The name of a device, after its icon in its color if it has one: bright
+	// while the device is online, dimmed while it is offline or the scan fails,
+	// as the last scan that worked does not tell who is online now. The classes
+	// ns-online and ns-offline let custom.css style the devices.
 	getNameCell(device) {
 		const name = document.createElement("td");
-		name.className = device.online ? "ns-name ns-online bright" : "ns-name ns-offline dimmed";
+		const bright = device.online && !this.error;
+		name.className = `ns-name ${device.online ? "ns-online" : "ns-offline"} ${bright ? "bright" : "dimmed"}`;
 		if (device.icon) {
 			const icon = document.createElement("i");
 			icon.className = `fa-solid fa-fw fa-${device.icon}`;

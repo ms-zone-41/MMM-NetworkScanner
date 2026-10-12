@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- While the scan fails, the devices faded to half their brightness, so the dimmed names and times were hard to read. All devices are now dimmed, like those that are offline
+
 ## [2.0.0] - 2026-10-11
 
 A rewrite, now maintained at [ms-zone-41/MMM-NetworkScanner](https://github.com/ms-zone-41/MMM-NetworkScanner). The configuration changes, see [Upgrading from version 1](README.md#upgrading-from-version-1).

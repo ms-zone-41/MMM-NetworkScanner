@@ -32,8 +32,3 @@
   max-width: 28em;
   overflow-wrap: anywhere;
 }
-
-/* The devices as the last scan that worked found them */
-.MMM-NetworkScanner .ns-stale {
-  opacity: 0.5;
-}
