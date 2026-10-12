@@ -95,7 +95,7 @@ test("shows that it is loading until the devices arrive", () => {
 	assert.deepEqual(rows(module), [["Anna"], ["Ben"]]);
 });
 
-test("shows each device with its icon, bright and in its color while online and dimmed while offline", () => {
+test("shows each device with its icon, bright and in its color while online and in the normal text color while offline", () => {
 	const module = createModule();
 	receive(module, [{ ...ANNA, color: "orange" }, BEN, { ...CARL, online: false, color: "orange" }]);
 	const [anna, ben, carl] = module.getDom().querySelectorAll(".ns-name");
@@ -103,10 +103,12 @@ test("shows each device with its icon, bright and in its color while online and 
 	assert.equal(anna.firstChild.className, "fa-solid fa-fw fa-mobile-screen");
 	assert.equal(anna.firstChild.style.color, "orange");
 	assert.equal(anna.textContent, "Anna");
-	assert.equal(ben.className, "ns-name ns-offline dimmed");
+	assert.equal(ben.className, "ns-name ns-offline");
 	assert.equal(ben.innerHTML, "Ben");
-	// The icon of a device that is offline is dimmed like its name
-	assert.equal(carl.className, "ns-name ns-offline dimmed");
+	// The icon of a device that is offline has the color of its name
+	assert.equal(carl.className, "ns-name ns-offline");
+	// Nothing dimmed while the scan works
+	assert.equal(module.getDom().querySelectorAll(".dimmed").length, 0);
 	assert.equal(carl.firstChild.style.color, "");
 });
 
@@ -146,6 +148,8 @@ test("shows the time since each device was last seen in minutes, hours up to 100
 	const minutes = [-1, 0, 59, 60, 100 * 60 - 1, 100 * 60, 41 * 24 * 60 - 1];
 	receive(module, [BEN, ...minutes.map((ago) => ({ ...BEN, lastSeen: NOW - ago * 60 * 1000 }))]);
 	assert.deepEqual(rows(module).map((cells) => cells.slice(1)), [["–", ""], ["0", "m"], ["0", "m"], ["59", "m"], ["1", "h"], ["99", "h"], ["4", "d"], ["40", "d"]]);
+	// Light, in the normal text color of the table
+	assert.deepEqual(Array.from(module.getDom().querySelector("tr").children, (cell) => cell.className), ["ns-name ns-offline", "ns-time-value light", "ns-time-unit light"]);
 });
 
 test("shows the time since a device was last seen only for the devices that are offline with showLastSeen \"offline\"", () => {
@@ -182,15 +186,16 @@ test("dims all devices while the scan fails, and shows them as before when it wo
 	// The color of the icon of Anna, who is online
 	const color = () => module.getDom().querySelector(".ns-online i").style.color;
 	receive(module, [{ ...ANNA, color: "orange" }, BEN], { code: "ARP_SCAN_NOT_FOUND" });
-	assert.ok(module.getDom().querySelector("table").classList.contains("ns-stale"));
+	assert.equal(module.getDom().querySelector("table").className, "ns-stale dimmed");
 	assert.deepEqual(rows(module), [["Anna"], ["Ben"]]);
-	// The last scan that worked does not tell who is online now
-	assert.deepEqual(names(), ["ns-name ns-online dimmed", "ns-name ns-offline dimmed"]);
+	// The last scan that worked does not tell who is online now: nothing
+	// bright, all in the dimmed color of the table
+	assert.deepEqual(names(), ["ns-name ns-online", "ns-name ns-offline"]);
 	assert.equal(color(), "");
 	receive(module, [{ ...ANNA, color: "orange" }, BEN]);
 	assert.equal(warning(module), null);
-	assert.ok(!module.getDom().querySelector("table").classList.contains("ns-stale"));
-	assert.deepEqual(names(), ["ns-name ns-online bright", "ns-name ns-offline dimmed"]);
+	assert.equal(module.getDom().querySelector("table").className, "");
+	assert.deepEqual(names(), ["ns-name ns-online bright", "ns-name ns-offline"]);
 	assert.equal(color(), "orange");
 });
 

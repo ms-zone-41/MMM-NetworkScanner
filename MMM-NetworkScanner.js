@@ -108,9 +108,9 @@ Module.register("MMM-NetworkScanner", {
 	getTable(devices) {
 		const table = document.createElement("table");
 		// While the scan fails, the devices are those of the last scan that
-		// worked. The class ns-stale lets custom.css style them.
+		// worked: dimmed. The class ns-stale lets custom.css style them.
 		if (this.error) {
-			table.className = "ns-stale";
+			table.className = "ns-stale dimmed";
 		}
 		let row;
 		devices.forEach((device, index) => {
@@ -128,14 +128,15 @@ Module.register("MMM-NetworkScanner", {
 	},
 
 	// The name of a device, after its icon if it has one: bright, with the icon
-	// in its color, while the device is online, and dimmed while it is offline
-	// or the scan fails, as the last scan that worked does not tell who is
+	// in its color, while the device is online. Otherwise it has the color of
+	// the table: the normal text color while the device is offline, and dimmed
+	// while the scan fails, as the last scan that worked does not tell who is
 	// online now. The classes ns-online and ns-offline let custom.css style the
 	// devices.
 	getNameCell(device) {
 		const name = document.createElement("td");
 		const bright = device.online && !this.error;
-		name.className = `ns-name ${device.online ? "ns-online" : "ns-offline"} ${bright ? "bright" : "dimmed"}`;
+		name.className = `ns-name ${device.online ? "ns-online" : "ns-offline"}${bright ? " bright" : ""}`;
 		if (device.icon) {
 			const icon = document.createElement("i");
 			icon.className = `fa-solid fa-fw fa-${device.icon}`;
@@ -154,10 +155,10 @@ Module.register("MMM-NetworkScanner", {
 	getLastSeenCells(device) {
 		const [value, unit] = this.config.showLastSeen === "offline" && device.online ? ["", ""] : this.formatLastSeen(device.lastSeen);
 		const valueCell = document.createElement("td");
-		valueCell.className = "ns-time-value dimmed light";
+		valueCell.className = "ns-time-value light";
 		valueCell.textContent = value;
 		const unitCell = document.createElement("td");
-		unitCell.className = "ns-time-unit dimmed light";
+		unitCell.className = "ns-time-unit light";
 		unitCell.textContent = unit;
 		return [valueCell, unitCell];
 	},
