@@ -95,16 +95,19 @@ test("shows that it is loading until the devices arrive", () => {
 	assert.deepEqual(rows(module), [["Anna"], ["Ben"]]);
 });
 
-test("shows each device with its icon in its color, bright while online and dimmed while offline", () => {
+test("shows each device with its icon, bright and in its color while online and dimmed while offline", () => {
 	const module = createModule();
-	receive(module, [{ ...ANNA, color: "orange" }, BEN]);
-	const [anna, ben] = module.getDom().querySelectorAll(".ns-name");
+	receive(module, [{ ...ANNA, color: "orange" }, BEN, { ...CARL, online: false, color: "orange" }]);
+	const [anna, ben, carl] = module.getDom().querySelectorAll(".ns-name");
 	assert.equal(anna.className, "ns-name ns-online bright");
 	assert.equal(anna.firstChild.className, "fa-solid fa-fw fa-mobile-screen");
 	assert.equal(anna.firstChild.style.color, "orange");
 	assert.equal(anna.textContent, "Anna");
 	assert.equal(ben.className, "ns-name ns-offline dimmed");
 	assert.equal(ben.innerHTML, "Ben");
+	// The icon of a device that is offline is dimmed like its name
+	assert.equal(carl.className, "ns-name ns-offline dimmed");
+	assert.equal(carl.firstChild.style.color, "");
 });
 
 test("shows the names as text, not as HTML", () => {
@@ -176,15 +179,19 @@ test("shows only the option that is not valid, with its value", () => {
 test("dims all devices while the scan fails, and shows them as before when it works again", () => {
 	const module = createModule();
 	const names = () => Array.from(module.getDom().querySelectorAll(".ns-name"), (cell) => cell.className);
-	receive(module, [ANNA, BEN], { code: "ARP_SCAN_NOT_FOUND" });
+	// The color of the icon of Anna, who is online
+	const color = () => module.getDom().querySelector(".ns-online i").style.color;
+	receive(module, [{ ...ANNA, color: "orange" }, BEN], { code: "ARP_SCAN_NOT_FOUND" });
 	assert.ok(module.getDom().querySelector("table").classList.contains("ns-stale"));
 	assert.deepEqual(rows(module), [["Anna"], ["Ben"]]);
 	// The last scan that worked does not tell who is online now
 	assert.deepEqual(names(), ["ns-name ns-online dimmed", "ns-name ns-offline dimmed"]);
-	receive(module, [ANNA, BEN]);
+	assert.equal(color(), "");
+	receive(module, [{ ...ANNA, color: "orange" }, BEN]);
 	assert.equal(warning(module), null);
 	assert.ok(!module.getDom().querySelector("table").classList.contains("ns-stale"));
 	assert.deepEqual(names(), ["ns-name ns-online bright", "ns-name ns-offline dimmed"]);
+	assert.equal(color(), "orange");
 });
 
 test("sends occupiedCMD when the first resident comes home and vacantCMD when the last one leaves", () => {

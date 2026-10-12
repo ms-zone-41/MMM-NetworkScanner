@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The `color` of a device colors its icon only while the device is online and the scan works. Otherwise the icon is dimmed like the name
+
 ### Fixed
 
 - While the scan fails, the devices faded to half their brightness, so the dimmed names and times were hard to read. All devices are now dimmed, like those that are offline

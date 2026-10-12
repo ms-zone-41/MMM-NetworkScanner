@@ -127,10 +127,11 @@ Module.register("MMM-NetworkScanner", {
 		return table;
 	},
 
-	// The name of a device, after its icon in its color if it has one: bright
-	// while the device is online, dimmed while it is offline or the scan fails,
-	// as the last scan that worked does not tell who is online now. The classes
-	// ns-online and ns-offline let custom.css style the devices.
+	// The name of a device, after its icon if it has one: bright, with the icon
+	// in its color, while the device is online, and dimmed while it is offline
+	// or the scan fails, as the last scan that worked does not tell who is
+	// online now. The classes ns-online and ns-offline let custom.css style the
+	// devices.
 	getNameCell(device) {
 		const name = document.createElement("td");
 		const bright = device.online && !this.error;
@@ -138,7 +139,7 @@ Module.register("MMM-NetworkScanner", {
 		if (device.icon) {
 			const icon = document.createElement("i");
 			icon.className = `fa-solid fa-fw fa-${device.icon}`;
-			if (device.color) {
+			if (device.color && bright) {
 				icon.style.color = device.color;
 			}
 			name.append(icon);

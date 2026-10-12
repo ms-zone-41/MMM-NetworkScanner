@@ -87,7 +87,7 @@ Each device in `devices` has either a `macAddress` or an `ipAddress`:
 | `ipAddress` | The IPv4 address of the device, e.g. `"192.168.178.10"`, which the module pings. Give the device a fixed address in your router. A host name works only if it resolves while the device is off, so not a `.local` name. |
 | `name` | The name to show. By default the address. |
 | `icon` | The name of a [Font Awesome](https://fontawesome.com/icons) icon of the free solid style, without `fa-`, e.g. `"mobile-screen"`. No icon by default. |
-| `color` | The color of the icon, as in CSS, e.g. `"orange"` or `"#ff0000"`. By default the color of the name. |
+| `color` | The color of the icon while the device is online, as in CSS, e.g. `"orange"` or `"#ff0000"`. By default, and while the device is offline or the scan fails, the color of the name. |
 
 The names have the class `ns-online` or `ns-offline`, and the table has the class `ns-stale` while the scan fails, so `config/custom.css` can style them, e.g. to show the devices that are offline in red:
 
