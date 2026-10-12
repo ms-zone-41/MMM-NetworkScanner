@@ -167,7 +167,7 @@ Module.register("MMM-NetworkScanner", {
 	// every language, so that they stay short.
 	formatLastSeen(lastSeen) {
 		if (lastSeen === null) {
-			return ["-", ""];
+			return ["–", ""];
 		}
 		// lastSeen is from the clock of the server, which may be ahead of the
 		// clock of the browser

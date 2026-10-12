@@ -69,7 +69,7 @@ To find the MAC address of a phone, see [Finding the MAC address of a device](#f
 | `updateInterval` | The time between two scans, in seconds, at most 3600. | `60` |
 | `keepAlive` | How long a device counts as online after it last answered, in seconds, at most 86400. | `300` |
 | `showOffline` | Also show the devices that are offline, dimmed. | `true` |
-| `showLastSeen` | Show the time since each device last answered, or `-` if it never has: `true` for all devices, `"offline"` only for the devices that are offline. | `false` |
+| `showLastSeen` | Show the time since each device last answered, or `–` if it never has: `true` for all devices, `"offline"` only for the devices that are offline. | `false` |
 | `columns` | The number of devices in a row. `1` shows a list. | `1` |
 | `residents` | The `name`s of the devices that tell whether someone is at home, e.g. phones. | `[]` |
 | `occupiedCMD` | The notification to send when the first resident comes home, as `{ notification: "…", payload: … }`. | `null` |

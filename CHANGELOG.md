@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - The `color` of a device colors its icon only while the device is online and the scan works. Otherwise the icon is dimmed like the name
+- A device that was never seen shows an en dash (–) instead of a hyphen (-)
 
 ### Fixed
 

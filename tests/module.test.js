@@ -145,14 +145,14 @@ test("shows the time since each device was last seen in minutes, hours up to 100
 	// -1: the clock of the server may be a little ahead of that of the browser
 	const minutes = [-1, 0, 59, 60, 100 * 60 - 1, 100 * 60, 41 * 24 * 60 - 1];
 	receive(module, [BEN, ...minutes.map((ago) => ({ ...BEN, lastSeen: NOW - ago * 60 * 1000 }))]);
-	assert.deepEqual(rows(module).map((cells) => cells.slice(1)), [["-", ""], ["0", "m"], ["0", "m"], ["59", "m"], ["1", "h"], ["99", "h"], ["4", "d"], ["40", "d"]]);
+	assert.deepEqual(rows(module).map((cells) => cells.slice(1)), [["–", ""], ["0", "m"], ["0", "m"], ["59", "m"], ["1", "h"], ["99", "h"], ["4", "d"], ["40", "d"]]);
 });
 
 test("shows the time since a device was last seen only for the devices that are offline with showLastSeen \"offline\"", () => {
 	const module = createModule({ showLastSeen: "offline", columns: 2 });
 	receive(module, [ANNA, BEN, { ...CARL, online: false }]);
 	// Empty cells for Anna, who is online, keep the columns in line
-	assert.deepEqual(rows(module), [["Anna", "", "", "Ben", "-", ""], ["Carl", "0", "m"]]);
+	assert.deepEqual(rows(module), [["Anna", "", "", "Ben", "–", ""], ["Carl", "0", "m"]]);
 });
 
 test("shows a problem of the scan, and below it the command that solves it or what went wrong", () => {
