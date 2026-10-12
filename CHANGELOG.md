@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - While the scan fails, the devices faded to half their brightness, so the dimmed names and times were hard to read. All devices are now dimmed, like those that are offline
+- A long message widened its region, e.g. the left column into the center one, and stretched the other modules in it. It now wraps at the width of the region
 
 ## [2.0.0] - 2026-10-11
 

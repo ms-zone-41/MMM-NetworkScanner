@@ -22,7 +22,11 @@
   margin-right: 0.3em;
 }
 
+/* The problem wraps at the width of the region instead of widening it, but
+   not below 15em, e.g. if the module is alone in its region */
 .MMM-NetworkScanner .ns-warning {
+  contain: inline-size;
+  min-width: 15em;
   margin-bottom: 0.5em;
 }
 
